@@ -293,6 +293,27 @@ body.playing-active .rotate-overlay {
 }
 
 /* ========================================
+   Screen: Countdown
+   ======================================== */
+
+.screen--countdown {
+  background: #1a1a2e;
+}
+
+.countdown-number {
+  font-size: clamp(8rem, 30vw, 20rem);
+  font-weight: 900;
+  color: #e94560;
+  animation: countdown-pop 0.5s ease-out;
+}
+
+@keyframes countdown-pop {
+  0% { transform: scale(2); opacity: 0; }
+  60% { transform: scale(0.95); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ========================================
    Screen: Ready
    ======================================== */
 
