@@ -216,16 +216,7 @@ function enterCountdown() {
 
 // ---- Tilt Detection ----
 
-const TILT = {
-  CORRECT_MIN: 120,   // beta above this = tilted forward/down = CORRECT
-  PASS_MAX: 55,       // beta below this = tilted back/up = PASS
-  NEUTRAL_MIN: 65,    // neutral zone for reset
-  NEUTRAL_MAX: 115,
-  DEBOUNCE_MS: 500,
-};
-
-let lastGestureTime = 0;
-let waitingForNeutral = false;
+let tiltState = { lastGestureTime: 0, waitingForNeutral: false };
 
 async function requestOrientationPermission() {
   if (typeof DeviceOrientationEvent !== 'undefined' &&
@@ -255,41 +246,21 @@ async function requestOrientationPermission() {
 
 function handleOrientation(event) {
   if (gameState.currentScreen !== 'PLAYING') return;
-  if (event.beta === null) return;
 
-  const now = Date.now();
-  if (now - lastGestureTime < TILT.DEBOUNCE_MS) return;
+  const result = processTilt(event.beta, Date.now(), tiltState, TILT_CONFIG);
+  tiltState = result.state;
 
-  const beta = event.beta;
-
-  if (waitingForNeutral) {
-    if (beta > TILT.NEUTRAL_MIN && beta < TILT.NEUTRAL_MAX) {
-      waitingForNeutral = false;
-    }
-    return;
-  }
-
-  if (beta > TILT.CORRECT_MIN) {
-    // Tilted forward/down (nod) = CORRECT
-    recordAnswer('correct');
-    lastGestureTime = now;
-    waitingForNeutral = true;
-  } else if (beta > 0 && beta < TILT.PASS_MAX) {
-    // Tilted back/up (lean back) = PASS
-    recordAnswer('pass');
-    lastGestureTime = now;
-    waitingForNeutral = true;
+  if (result.action) {
+    recordAnswer(result.action);
   }
 }
 
-// Tap zone fallbacks
-// Left tap = correct (matches tilt-down = correct)
+// Tap zone fallbacks - ONLY active when tilt is not available (desktop)
 document.getElementById('tap-pass').addEventListener('click', () => {
-  if (gameState.currentScreen === 'PLAYING') recordAnswer('correct');
+  if (!gameState.tiltAvailable && gameState.currentScreen === 'PLAYING') recordAnswer('correct');
 });
-// Right tap = pass (matches tilt-up = pass)
 document.getElementById('tap-correct').addEventListener('click', () => {
-  if (gameState.currentScreen === 'PLAYING') recordAnswer('pass');
+  if (!gameState.tiltAvailable && gameState.currentScreen === 'PLAYING') recordAnswer('pass');
 });
 
 // ---- Playing Screen ----
@@ -298,8 +269,7 @@ function enterPlaying() {
   document.body.classList.add('playing-active');
   gameState.roundWords = [];
   gameState.timeRemaining = gameState.timerDuration;
-  lastGestureTime = 0;
-  waitingForNeutral = false;
+  tiltState = { lastGestureTime: 0, waitingForNeutral: false };
 
   if (gameState.tiltAvailable) {
     window.addEventListener('deviceorientation', handleOrientation);
