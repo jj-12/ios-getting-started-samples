@@ -160,6 +160,12 @@ html, body {
   background-clip: text;
 }
 
+.version-label {
+  font-size: 0.7rem;
+  opacity: 0.3;
+  margin-top: 8px;
+}
+
 .setup-subtitle {
   font-size: 1rem;
   opacity: 0.6;

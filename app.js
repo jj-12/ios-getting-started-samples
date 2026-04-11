@@ -8,6 +8,7 @@ const gameState = {
   teams: [],
   timerDuration: 60,
   category: 'general',
+  difficulty: 'easy',
   roundsPerTeam: 1,
 
   currentScreen: 'SETUP',
@@ -76,7 +77,10 @@ function enterState(screen) {
 let teamCount = 2;
 let selectedTimer = 60;
 let selectedCategory = 'general';
+let selectedDifficulty = 'easy';
 let roundsPerTeam = 1;
+
+const DIFFICULTY_WORD_LIMIT = { easy: 50, medium: 125, hard: Infinity };
 
 function initSetup() {
   // Team stepper
@@ -113,6 +117,15 @@ function initSetup() {
       document.querySelectorAll('#timer-group .toggle-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       selectedTimer = parseInt(btn.dataset.value);
+    });
+  });
+
+  // Difficulty toggle
+  document.querySelectorAll('#difficulty-group .toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#difficulty-group .toggle-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedDifficulty = btn.dataset.value;
     });
   });
 
@@ -161,6 +174,7 @@ function startGame() {
   }));
   gameState.timerDuration = selectedTimer;
   gameState.category = selectedCategory;
+  gameState.difficulty = selectedDifficulty;
   gameState.roundsPerTeam = roundsPerTeam;
   gameState.currentTeamIndex = 0;
   gameState.currentRound = 0;
@@ -308,7 +322,9 @@ function showNextWord() {
 }
 
 function getNextWord() {
-  const words = WORD_BANK[gameState.category].words;
+  const allWords = WORD_BANK[gameState.category].words;
+  const limit = DIFFICULTY_WORD_LIMIT[gameState.difficulty] || allWords.length;
+  const words = allWords.slice(0, Math.min(limit, allWords.length));
   const available = words.filter(w => !gameState.wordsUsed.has(w));
   if (available.length === 0) {
     gameState.wordsUsed.clear();
