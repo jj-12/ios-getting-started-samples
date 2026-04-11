@@ -247,7 +247,15 @@ async function requestOrientationPermission() {
 function handleOrientation(event) {
   if (gameState.currentScreen !== 'PLAYING') return;
 
-  const result = processTilt(event.beta, Date.now(), tiltState, TILT_CONFIG);
+  // Get screen orientation angle (works on iOS and Android)
+  const orientationAngle = (screen.orientation && screen.orientation.angle !== undefined)
+    ? screen.orientation.angle
+    : (window.orientation || 0);
+
+  // Convert to orientation-independent tilt value
+  const effectiveTilt = getEffectiveTilt(event.beta, event.gamma, orientationAngle);
+
+  const result = processTilt(effectiveTilt, Date.now(), tiltState, TILT_CONFIG);
   tiltState = result.state;
 
   if (result.action) {
