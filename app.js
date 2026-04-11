@@ -7,7 +7,7 @@
 const gameState = {
   teams: [],
   timerDuration: 60,
-  category: 'animals',
+  category: 'general',
   roundsPerTeam: 1,
 
   currentScreen: 'SETUP',
@@ -75,7 +75,7 @@ function enterState(screen) {
 
 let teamCount = 2;
 let selectedTimer = 60;
-let selectedCategory = 'animals';
+let selectedCategory = 'general';
 let roundsPerTeam = 1;
 
 function initSetup() {
