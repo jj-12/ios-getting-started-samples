@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1a1a2e">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <title>Heads Up!</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Rotate overlay (shown in portrait during gameplay) -->
+  <div id="rotate-overlay" class="rotate-overlay">
+    <div class="rotate-content">
+      <div class="rotate-icon">📱</div>
+      <p>Please rotate your device to landscape</p>
+    </div>
+  </div>
+
+  <!-- Screen: Setup -->
+  <section id="screen-setup" class="screen screen--setup active">
+    <div class="setup-container">
+      <h1 class="setup-title">Heads Up!</h1>
+      <p class="setup-subtitle">The family guessing game</p>
+
+      <!-- Teams -->
+      <div class="setup-section">
+        <label class="setup-label">Teams</label>
+        <div class="stepper">
+          <button id="teams-minus" class="stepper-btn" aria-label="Remove team">−</button>
+          <span id="teams-count" class="stepper-value">2</span>
+          <button id="teams-plus" class="stepper-btn" aria-label="Add team">+</button>
+        </div>
+        <div id="team-names" class="team-names">
+          <input type="text" class="team-input" placeholder="Team 1" maxlength="20">
+          <input type="text" class="team-input" placeholder="Team 2" maxlength="20">
+        </div>
+      </div>
+
+      <!-- Timer -->
+      <div class="setup-section">
+        <label class="setup-label">Timer</label>
+        <div class="toggle-group" id="timer-group">
+          <button class="toggle-btn active" data-value="60">60s</button>
+          <button class="toggle-btn" data-value="90">90s</button>
+          <button class="toggle-btn" data-value="120">120s</button>
+        </div>
+      </div>
+
+      <!-- Rounds per team -->
+      <div class="setup-section">
+        <label class="setup-label">Rounds per team</label>
+        <div class="stepper">
+          <button id="rounds-minus" class="stepper-btn" aria-label="Fewer rounds">−</button>
+          <span id="rounds-count" class="stepper-value">1</span>
+          <button id="rounds-plus" class="stepper-btn" aria-label="More rounds">+</button>
+        </div>
+      </div>
+
+      <!-- Category -->
+      <div class="setup-section">
+        <label class="setup-label">Category</label>
+        <div id="category-grid" class="category-grid"></div>
+      </div>
+
+      <button id="start-game-btn" class="btn btn--primary btn--large">Start Game</button>
+    </div>
+  </section>
+
+  <!-- Screen: Ready -->
+  <section id="screen-ready" class="screen screen--ready">
+    <div class="ready-content">
+      <h2 id="ready-team-name" class="ready-team">Team 1</h2>
+      <p id="ready-category" class="ready-category">Animals</p>
+      <div class="ready-instruction">
+        <div class="phone-icon">📱</div>
+        <p>Hold the phone to your forehead<br>and press GO!</p>
+      </div>
+      <button id="go-btn" class="btn btn--go">GO</button>
+    </div>
+  </section>
+
+  <!-- Screen: Playing -->
+  <section id="screen-playing" class="screen screen--playing">
+    <div class="playing-header">
+      <span id="playing-score" class="playing-info">0 correct</span>
+      <span id="playing-timer" class="timer">60</span>
+    </div>
+    <div id="playing-word" class="word-display">ELEPHANT</div>
+    <div class="playing-footer">
+      <span class="tilt-hint tilt-hint--down">⬇ Tilt down if correct</span>
+      <span class="tilt-hint tilt-hint--up">⬆ Tilt up to pass</span>
+    </div>
+    <!-- Invisible tap zones for fallback -->
+    <div id="tap-pass" class="tap-zone tap-zone--pass" aria-label="Pass"></div>
+    <div id="tap-correct" class="tap-zone tap-zone--correct" aria-label="Correct"></div>
+  </section>
+
+  <!-- Screen: Round Results -->
+  <section id="screen-results" class="screen screen--results">
+    <div class="results-container">
+      <h2 id="results-title" class="results-title">Team 1</h2>
+      <p id="results-score" class="results-score">5 correct!</p>
+      <p class="results-hint">Tap a word to change its result</p>
+      <ul id="results-list" class="results-list"></ul>
+      <button id="results-continue-btn" class="btn btn--primary">Continue</button>
+    </div>
+  </section>
+
+  <!-- Screen: Scoreboard -->
+  <section id="screen-scoreboard" class="screen screen--scoreboard">
+    <div class="scoreboard-container">
+      <h2 class="scoreboard-title">Scoreboard</h2>
+      <div id="scoreboard-table" class="scoreboard-table"></div>
+      <button id="scoreboard-next-btn" class="btn btn--primary btn--large"></button>
+    </div>
+  </section>
+
+  <!-- Screen: Game Over -->
+  <section id="screen-gameover" class="screen screen--gameover">
+    <div class="gameover-container">
+      <div id="confetti" class="confetti"></div>
+      <h2 id="gameover-winner" class="gameover-winner">Team 1 Wins!</h2>
+      <div id="gameover-scores" class="gameover-scores"></div>
+      <div class="gameover-buttons">
+        <button id="play-again-btn" class="btn btn--primary">Play Again</button>
+        <button id="new-game-btn" class="btn btn--secondary">New Game</button>
+      </div>
+    </div>
+  </section>
+
+  <script src="words.js"></script>
+  <script src="audio.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

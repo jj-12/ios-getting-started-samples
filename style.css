@@ -1,0 +1,770 @@
+/* ========================================
+   Heads Up! Party Game - Styles
+   ======================================== */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: #1a1a2e;
+  color: #ffffff;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ========================================
+   Screens (shared)
+   ======================================== */
+
+.screen {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0)
+           env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+}
+
+.screen.active {
+  display: flex;
+}
+
+/* ========================================
+   Buttons
+   ======================================== */
+
+.btn {
+  border: none;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 14px 32px;
+  transition: transform 0.1s, opacity 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn:active {
+  transform: scale(0.95);
+  opacity: 0.9;
+}
+
+.btn--primary {
+  background: #e94560;
+  color: #fff;
+}
+
+.btn--secondary {
+  background: transparent;
+  color: #e94560;
+  border: 2px solid #e94560;
+}
+
+.btn--large {
+  font-size: 1.3rem;
+  padding: 16px 48px;
+  width: 100%;
+  max-width: 400px;
+}
+
+/* ========================================
+   Rotate Overlay
+   ======================================== */
+
+.rotate-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: #1a1a2e;
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+.rotate-content {
+  text-align: center;
+}
+
+.rotate-icon {
+  font-size: 4rem;
+  animation: rotate-phone 1.5s ease-in-out infinite;
+  display: inline-block;
+}
+
+@keyframes rotate-phone {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(90deg); }
+}
+
+.rotate-overlay p {
+  font-size: 1.3rem;
+  margin-top: 1rem;
+  opacity: 0.8;
+}
+
+/* Show rotate overlay in portrait for gameplay screens */
+body.playing-active .rotate-overlay {
+  /* Controlled via JS based on orientation */
+}
+
+/* ========================================
+   Screen: Setup
+   ======================================== */
+
+.screen--setup {
+  overflow-y: auto;
+  justify-content: flex-start;
+  padding: 20px;
+}
+
+.setup-container {
+  width: 100%;
+  max-width: 500px;
+  padding: 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+}
+
+.setup-title {
+  font-size: 2.5rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, #e94560, #0f3460);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.setup-subtitle {
+  font-size: 1rem;
+  opacity: 0.6;
+  margin-top: -12px;
+}
+
+.setup-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.setup-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.6;
+}
+
+/* Stepper */
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.stepper-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid #e94560;
+  background: transparent;
+  color: #e94560;
+  font-size: 1.5rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.stepper-btn:active {
+  background: #e94560;
+  color: #fff;
+}
+
+.stepper-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  min-width: 30px;
+  text-align: center;
+}
+
+/* Team name inputs */
+.team-names {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.team-input {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px;
+  padding: 12px 16px;
+  color: #fff;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.team-input:focus {
+  border-color: #e94560;
+}
+
+.team-input::placeholder {
+  color: rgba(255,255,255,0.35);
+}
+
+/* Timer toggle */
+.toggle-group {
+  display: flex;
+  gap: 8px;
+}
+
+.toggle-btn {
+  flex: 1;
+  padding: 12px 0;
+  border: 2px solid rgba(255,255,255,0.15);
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(255,255,255,0.6);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.toggle-btn.active {
+  border-color: #e94560;
+  background: rgba(233, 69, 96, 0.15);
+  color: #fff;
+}
+
+/* Category grid */
+.category-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.category-card {
+  padding: 16px 12px;
+  border: 2px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.category-card.selected {
+  border-color: #e94560;
+  background: rgba(233, 69, 96, 0.15);
+}
+
+.category-card-icon {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.category-card-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* ========================================
+   Screen: Ready
+   ======================================== */
+
+.screen--ready {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+}
+
+.ready-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+}
+
+.ready-team {
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  font-weight: 900;
+}
+
+.ready-category {
+  font-size: 1.1rem;
+  opacity: 0.6;
+  font-weight: 500;
+}
+
+.ready-instruction {
+  opacity: 0.8;
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.phone-icon {
+  font-size: 3rem;
+  animation: tilt-hint 2s ease-in-out infinite;
+  display: inline-block;
+  margin-bottom: 8px;
+}
+
+@keyframes tilt-hint {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-30deg); }
+  75% { transform: rotate(30deg); }
+}
+
+.btn--go {
+  background: #2ecc71;
+  color: #fff;
+  font-size: 2rem;
+  font-weight: 900;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 0 40px rgba(46, 204, 113, 0.3);
+  transition: transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn--go:active {
+  transform: scale(0.92);
+}
+
+/* ========================================
+   Screen: Playing
+   ======================================== */
+
+.screen--playing {
+  background: #1a1a2e;
+  transition: background-color 0.15s ease;
+  justify-content: space-between;
+  padding: 16px 24px;
+}
+
+.screen--playing.flash-correct {
+  background-color: #27ae60;
+}
+
+.screen--playing.flash-pass {
+  background-color: #c0392b;
+}
+
+.playing-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.playing-info {
+  font-size: clamp(1rem, 2.5vw, 1.5rem);
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.timer {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer.urgent {
+  color: #e74c3c;
+  animation: pulse 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.15); }
+}
+
+.word-display {
+  font-size: clamp(2.5rem, 10vw, 7rem);
+  font-weight: 900;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0 16px;
+  line-height: 1.1;
+  max-width: 100%;
+  word-break: break-word;
+}
+
+.playing-footer {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  opacity: 0.4;
+  font-size: 0.85rem;
+}
+
+.tilt-hint {
+  font-weight: 500;
+}
+
+/* Tap zones (invisible, full height on each side) */
+.tap-zone {
+  position: fixed;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  z-index: 10;
+  cursor: pointer;
+}
+
+.tap-zone--pass {
+  left: 0;
+}
+
+.tap-zone--correct {
+  right: 0;
+}
+
+/* Show tap zone indicators when tilt is not available */
+body.tap-mode .tap-zone--pass {
+  background: linear-gradient(90deg, rgba(231, 76, 60, 0.08) 0%, transparent 100%);
+}
+
+body.tap-mode .tap-zone--correct {
+  background: linear-gradient(270deg, rgba(46, 204, 113, 0.08) 0%, transparent 100%);
+}
+
+body.tap-mode .playing-footer {
+  opacity: 0.7;
+}
+
+body.tap-mode .tilt-hint--down::before {
+  content: "\u2190 Tap left if correct";
+}
+
+body.tap-mode .tilt-hint--up::before {
+  content: "Tap right to pass \u2192";
+}
+
+body.tap-mode .tilt-hint--down {
+  font-size: 0;
+}
+
+body.tap-mode .tilt-hint--up {
+  font-size: 0;
+}
+
+body.tap-mode .tilt-hint--down::before,
+body.tap-mode .tilt-hint--up::before {
+  font-size: 0.85rem;
+}
+
+/* ========================================
+   Screen: Round Results
+   ======================================== */
+
+.screen--results {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  overflow-y: auto;
+}
+
+.results-container {
+  width: 100%;
+  max-width: 600px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+.results-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+}
+
+.results-score {
+  font-size: 1.3rem;
+  color: #2ecc71;
+  font-weight: 700;
+}
+
+.results-hint {
+  font-size: 0.8rem;
+  opacity: 0.4;
+}
+
+.results-list {
+  list-style: none;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.results-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.results-item:active {
+  background: rgba(255,255,255,0.12);
+}
+
+.results-icon {
+  font-size: 1.3rem;
+  width: 28px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.results-word {
+  font-size: 1.1rem;
+  font-weight: 600;
+  flex: 1;
+}
+
+.results-item.correct .results-icon::before {
+  content: "\u2705";
+}
+
+.results-item.pass .results-icon::before {
+  content: "\u274c";
+}
+
+.results-item.pass .results-word {
+  opacity: 0.5;
+}
+
+/* ========================================
+   Screen: Scoreboard
+   ======================================== */
+
+.screen--scoreboard {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+}
+
+.scoreboard-container {
+  width: 100%;
+  max-width: 600px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.scoreboard-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+}
+
+.scoreboard-table {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.scoreboard-row {
+  display: flex;
+  align-items: center;
+  padding: 14px 18px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 10px;
+  gap: 12px;
+}
+
+.scoreboard-row.leader {
+  background: rgba(233, 69, 96, 0.2);
+  border: 1px solid rgba(233, 69, 96, 0.4);
+}
+
+.scoreboard-rank {
+  font-size: 1.2rem;
+  font-weight: 800;
+  width: 30px;
+  text-align: center;
+  opacity: 0.5;
+}
+
+.scoreboard-row.leader .scoreboard-rank {
+  opacity: 1;
+  color: #e94560;
+}
+
+.scoreboard-name {
+  flex: 1;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.scoreboard-points {
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+/* ========================================
+   Screen: Game Over
+   ======================================== */
+
+.screen--gameover {
+  background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+  overflow: hidden;
+}
+
+.gameover-container {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 24px;
+  position: relative;
+  z-index: 1;
+}
+
+.gameover-winner {
+  font-size: clamp(1.8rem, 5vw, 3rem);
+  font-weight: 900;
+  background: linear-gradient(135deg, #f39c12, #e94560);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gameover-scores {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.gameover-score-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 8px;
+}
+
+.gameover-score-name {
+  font-weight: 600;
+}
+
+.gameover-score-points {
+  font-weight: 800;
+}
+
+.gameover-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+/* ========================================
+   Confetti
+   ======================================== */
+
+.confetti {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -20px;
+  width: 10px;
+  height: 20px;
+  border-radius: 2px;
+  animation: confetti-fall linear forwards;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg) scale(0.5);
+    opacity: 0;
+  }
+}
+
+/* ========================================
+   Landscape media query
+   ======================================== */
+
+@media (orientation: landscape) {
+  .screen--setup {
+    flex-direction: row;
+  }
+
+  .setup-container {
+    max-width: 600px;
+  }
+
+  .category-grid {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
+/* ========================================
+   Small screen adjustments
+   ======================================== */
+
+@media (max-height: 400px) {
+  .ready-content {
+    gap: 10px;
+  }
+
+  .btn--go {
+    width: 100px;
+    height: 100px;
+    font-size: 1.5rem;
+  }
+
+  .phone-icon {
+    font-size: 2rem;
+  }
+
+  .ready-instruction {
+    font-size: 0.9rem;
+  }
+}
