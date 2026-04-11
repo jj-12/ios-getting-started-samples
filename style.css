@@ -116,9 +116,19 @@ html, body {
   opacity: 0.8;
 }
 
-/* Show rotate overlay in portrait for gameplay screens */
-body.playing-active .rotate-overlay {
-  /* Controlled via JS based on orientation */
+.rotate-buttons {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.rotate-paused {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f39c12;
+  margin-top: 1.5rem;
 }
 
 /* ========================================

@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { processTilt, TILT_CONFIG } = require('../tilt.js');
+const { processTilt, getEffectiveTilt, TILT_CONFIG } = require('../tilt.js');
 
 const freshState = () => ({ lastGestureTime: 0, waitingForNeutral: false });
 const config = TILT_CONFIG;
@@ -315,6 +315,154 @@ describe('processTilt', () => {
       // beta < PASS_MAX is the check, so exactly PASS_MAX should NOT trigger
       const result = processTilt(config.PASS_MAX, 1000, freshState(), config);
       assert.equal(result.action, null);
+    });
+  });
+});
+
+describe('getEffectiveTilt', () => {
+
+  // ---- Portrait (angle = 0) ----
+
+  describe('portrait orientation (angle 0)', () => {
+    it('should return beta directly', () => {
+      assert.equal(getEffectiveTilt(90, 0, 0), 90);
+    });
+
+    it('should return beta when tilted forward', () => {
+      assert.equal(getEffectiveTilt(130, 10, 0), 130);
+    });
+
+    it('should return beta when tilted backward', () => {
+      assert.equal(getEffectiveTilt(40, -20, 0), 40);
+    });
+
+    it('should ignore gamma in portrait', () => {
+      assert.equal(getEffectiveTilt(90, 45, 0), 90);
+    });
+  });
+
+  // ---- Landscape right (angle = 90) ----
+
+  describe('landscape right (angle 90, device rotated clockwise)', () => {
+    it('should return 90 when device is vertical (gamma = 0)', () => {
+      assert.equal(getEffectiveTilt(0, 0, 90), 90);
+    });
+
+    it('should return > 90 when tilted forward (gamma positive)', () => {
+      const result = getEffectiveTilt(0, 35, 90);
+      assert.equal(result, 125);  // 90 + 35 = 125, triggers correct
+    });
+
+    it('should return < 90 when tilted backward (gamma negative)', () => {
+      const result = getEffectiveTilt(0, -40, 90);
+      assert.equal(result, 50);   // 90 + (-40) = 50, triggers pass
+    });
+
+    it('should trigger correct threshold at gamma = 31', () => {
+      const result = getEffectiveTilt(0, 31, 90);
+      assert.ok(result > TILT_CONFIG.CORRECT_MIN, `${result} should exceed ${TILT_CONFIG.CORRECT_MIN}`);
+    });
+
+    it('should trigger pass threshold at gamma = -36', () => {
+      const result = getEffectiveTilt(0, -36, 90);
+      assert.ok(result < TILT_CONFIG.PASS_MAX, `${result} should be below ${TILT_CONFIG.PASS_MAX}`);
+    });
+  });
+
+  // ---- Landscape left (angle = 270) ----
+
+  describe('landscape left (angle 270, device rotated counter-clockwise)', () => {
+    it('should return 90 when device is vertical (gamma = 0)', () => {
+      assert.equal(getEffectiveTilt(0, 0, 270), 90);
+    });
+
+    it('should return > 90 when tilted forward (gamma negative)', () => {
+      const result = getEffectiveTilt(0, -35, 270);
+      assert.equal(result, 125);  // 90 - (-35) = 125
+    });
+
+    it('should return < 90 when tilted backward (gamma positive)', () => {
+      const result = getEffectiveTilt(0, 40, 270);
+      assert.equal(result, 50);   // 90 - 40 = 50
+    });
+
+    it('should trigger correct threshold at gamma = -31', () => {
+      const result = getEffectiveTilt(0, -31, 270);
+      assert.ok(result > TILT_CONFIG.CORRECT_MIN, `${result} should exceed ${TILT_CONFIG.CORRECT_MIN}`);
+    });
+
+    it('should trigger pass threshold at gamma = 36', () => {
+      const result = getEffectiveTilt(0, 36, 270);
+      assert.ok(result < TILT_CONFIG.PASS_MAX, `${result} should be below ${TILT_CONFIG.PASS_MAX}`);
+    });
+  });
+
+  // ---- Negative orientation angles (iOS uses -90 for landscape left) ----
+
+  describe('negative orientation angle (-90)', () => {
+    it('should normalize -90 to 270 and use gamma accordingly', () => {
+      // -90 mod 360 = 270
+      assert.equal(getEffectiveTilt(0, 0, -90), 90);
+    });
+
+    it('should handle tilt forward with -90 orientation', () => {
+      const result = getEffectiveTilt(0, -35, -90);
+      assert.equal(result, 125);  // same as angle 270
+    });
+  });
+
+  // ---- Edge cases ----
+
+  describe('edge cases', () => {
+    it('should return null when beta is null', () => {
+      assert.equal(getEffectiveTilt(null, 0, 0), null);
+    });
+
+    it('should return null when beta is undefined', () => {
+      assert.equal(getEffectiveTilt(undefined, 0, 90), null);
+    });
+
+    it('should handle null gamma by treating as 0', () => {
+      assert.equal(getEffectiveTilt(90, null, 0), 90);   // portrait: uses beta
+      assert.equal(getEffectiveTilt(0, null, 90), 90);    // landscape: 90 + 0 = 90
+    });
+
+    it('should handle orientation angle 180 (upside down portrait)', () => {
+      assert.equal(getEffectiveTilt(90, 0, 180), 90);  // uses beta
+    });
+  });
+
+  // ---- Integration: getEffectiveTilt -> processTilt ----
+
+  describe('integration with processTilt', () => {
+    it('should detect correct in landscape right (gamma = 35)', () => {
+      const tilt = getEffectiveTilt(0, 35, 90);    // 125
+      const result = processTilt(tilt, 1000, freshState(), config);
+      assert.equal(result.action, 'correct');
+    });
+
+    it('should detect pass in landscape right (gamma = -40)', () => {
+      const tilt = getEffectiveTilt(0, -40, 90);   // 50
+      const result = processTilt(tilt, 1000, freshState(), config);
+      assert.equal(result.action, 'pass');
+    });
+
+    it('should detect neutral in landscape right (gamma = 0)', () => {
+      const tilt = getEffectiveTilt(0, 0, 90);     // 90
+      const result = processTilt(tilt, 1000, freshState(), config);
+      assert.equal(result.action, null);
+    });
+
+    it('should detect correct in landscape left (gamma = -35)', () => {
+      const tilt = getEffectiveTilt(0, -35, 270);   // 125
+      const result = processTilt(tilt, 1000, freshState(), config);
+      assert.equal(result.action, 'correct');
+    });
+
+    it('should detect pass in landscape left (gamma = 40)', () => {
+      const tilt = getEffectiveTilt(0, 40, 270);    // 50
+      const result = processTilt(tilt, 1000, freshState(), config);
+      assert.equal(result.action, 'pass');
     });
   });
 });
