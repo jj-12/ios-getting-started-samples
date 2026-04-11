@@ -1,9 +1,10 @@
-const CACHE_NAME = 'headsup-v2';
+const CACHE_NAME = 'headsup-v3';
 const ASSETS = [
   './',
   './index.html',
   './style.css',
   './app.js',
+  './tilt.js',
   './words.js',
   './audio.js',
   './manifest.json',
