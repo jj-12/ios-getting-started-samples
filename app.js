@@ -31,6 +31,7 @@ const screens = {
   READY: document.getElementById('screen-ready'),
   PLAYING: document.getElementById('screen-playing'),
   ROUND_RESULTS: document.getElementById('screen-results'),
+  COUNTDOWN: document.getElementById('screen-countdown'),
   SCOREBOARD: document.getElementById('screen-scoreboard'),
   GAME_OVER: document.getElementById('screen-gameover'),
 };
@@ -43,6 +44,8 @@ function transition(newScreen) {
   enterState(newScreen);
 }
 
+let countdownTimer = null;
+
 function exitState(screen) {
   if (screen === 'PLAYING') {
     clearInterval(gameState.timerInterval);
@@ -51,11 +54,16 @@ function exitState(screen) {
     document.body.classList.remove('playing-active');
     releaseWakeLock();
   }
+  if (screen === 'COUNTDOWN') {
+    clearInterval(countdownTimer);
+    countdownTimer = null;
+  }
 }
 
 function enterState(screen) {
   switch (screen) {
     case 'READY': enterReady(); break;
+    case 'COUNTDOWN': enterCountdown(); break;
     case 'PLAYING': enterPlaying(); break;
     case 'ROUND_RESULTS': enterRoundResults(); break;
     case 'SCOREBOARD': enterScoreboard(); break;
@@ -172,18 +180,48 @@ function enterReady() {
 
 document.getElementById('go-btn').addEventListener('click', async () => {
   initAudio();
+  // Request fullscreen to hide address bar
+  try {
+    const el = document.documentElement;
+    const rfs = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+    if (rfs) await rfs.call(el);
+  } catch (e) {}
   await requestOrientationPermission();
-  transition('PLAYING');
+  transition('COUNTDOWN');
 });
+
+// ---- Countdown ----
+
+function enterCountdown() {
+  const countdownEl = document.getElementById('countdown-number');
+  let count = 3;
+  countdownEl.textContent = count;
+
+  playTickSound();
+
+  countdownTimer = setInterval(() => {
+    count--;
+    if (count > 0) {
+      countdownEl.textContent = count;
+      // Re-trigger animation
+      countdownEl.style.animation = 'none';
+      countdownEl.offsetHeight; // force reflow
+      countdownEl.style.animation = '';
+      playTickSound();
+    } else {
+      transition('PLAYING');
+    }
+  }, 1000);
+}
 
 // ---- Tilt Detection ----
 
 const TILT = {
-  CORRECT_MAX: 50,
-  PASS_MIN: 130,
-  NEUTRAL_MIN: 60,
-  NEUTRAL_MAX: 120,
-  DEBOUNCE_MS: 800,
+  CORRECT_MIN: 120,   // beta above this = tilted forward/down = CORRECT
+  PASS_MAX: 55,       // beta below this = tilted back/up = PASS
+  NEUTRAL_MIN: 65,    // neutral zone for reset
+  NEUTRAL_MAX: 115,
+  DEBOUNCE_MS: 500,
 };
 
 let lastGestureTime = 0;
@@ -231,14 +269,14 @@ function handleOrientation(event) {
     return;
   }
 
-  if (beta > TILT.PASS_MIN && beta < 180) {
-    // Tilted UP (away from face) = PASS
-    recordAnswer('pass');
+  if (beta > TILT.CORRECT_MIN) {
+    // Tilted forward/down (nod) = CORRECT
+    recordAnswer('correct');
     lastGestureTime = now;
     waitingForNeutral = true;
-  } else if (beta > 0 && beta < TILT.CORRECT_MAX) {
-    // Tilted DOWN (nod forward) = CORRECT
-    recordAnswer('correct');
+  } else if (beta > 0 && beta < TILT.PASS_MAX) {
+    // Tilted back/up (lean back) = PASS
+    recordAnswer('pass');
     lastGestureTime = now;
     waitingForNeutral = true;
   }
