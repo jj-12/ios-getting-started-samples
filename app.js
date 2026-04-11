@@ -558,6 +558,41 @@ async function requestWakeLock() {
       });
     } catch (e) {}
   }
+
+  // iOS fallback: Wake Lock API isn't supported on older iOS Safari.
+  // Use a tiny looping video to prevent the screen from dimming.
+  if (!gameState.wakeLock) {
+    startNoSleepFallback();
+  }
+}
+
+let noSleepVideo = null;
+
+function startNoSleepFallback() {
+  if (noSleepVideo) return;
+  noSleepVideo = document.createElement('video');
+  noSleepVideo.setAttribute('playsinline', '');
+  noSleepVideo.setAttribute('muted', '');
+  noSleepVideo.muted = true;
+  noSleepVideo.style.position = 'fixed';
+  noSleepVideo.style.top = '-1px';
+  noSleepVideo.style.left = '-1px';
+  noSleepVideo.style.width = '1px';
+  noSleepVideo.style.height = '1px';
+  noSleepVideo.style.opacity = '0.01';
+  // Minimal valid mp4 encoded as data URI
+  noSleepVideo.src = 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAAAhmcmVlAAAAGm1kYXQAAABfAQAFAA8AB//+AAAAWm1kYXQAAAAfAQAFAA8AB//+cAAAAFptZGF0AAAAHwEABQAPAAf//nAAAABjbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAACkAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAABhpb2RzAAAAABCAgIARAE////8AAAATY21lZAAAAARuZXcgAAAAGG1pbmYAAAAUdm1oZAAAAAAAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAABhzdGJsAAAAEHN0c2QAAAAAAAAAAQAAABB1cmwgAAAAAQAAABBzdHN6AAAAAAAAAAAAAAARAHN0c2MAAAAAAAAAAAAAEcN0Y28AAAAAAAAAE';
+  noSleepVideo.loop = true;
+  document.body.appendChild(noSleepVideo);
+  noSleepVideo.play().catch(() => {});
+}
+
+function stopNoSleepFallback() {
+  if (noSleepVideo) {
+    noSleepVideo.pause();
+    noSleepVideo.remove();
+    noSleepVideo = null;
+  }
 }
 
 function releaseWakeLock() {
@@ -565,6 +600,7 @@ function releaseWakeLock() {
     gameState.wakeLock.release();
     gameState.wakeLock = null;
   }
+  stopNoSleepFallback();
 }
 
 // ---- Orientation Overlay (pause/resume) ----
