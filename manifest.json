@@ -1,0 +1,22 @@
+{
+  "name": "Heads Up! Party Game",
+  "short_name": "Heads Up",
+  "description": "A fun family guessing game - hold the phone to your forehead and guess the word!",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#1a1a2e",
+  "theme_color": "#e94560",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
