@@ -551,7 +551,9 @@ function releaseWakeLock() {
   }
 }
 
-// ---- Orientation Overlay ----
+// ---- Orientation Overlay (pause/resume) ----
+
+let gamePaused = false;
 
 function checkOrientation() {
   const overlay = document.getElementById('rotate-overlay');
@@ -560,10 +562,59 @@ function checkOrientation() {
 
   if (isPortrait && needsLandscape) {
     overlay.style.display = 'flex';
+    // Pause the game timer if currently playing
+    if (gameState.currentScreen === 'PLAYING' && !gamePaused) {
+      gamePaused = true;
+      clearInterval(gameState.timerInterval);
+      gameState.timerInterval = null;
+      window.removeEventListener('deviceorientation', handleOrientation);
+    }
   } else {
     overlay.style.display = 'none';
+    // Resume the game timer if we were paused
+    if (gameState.currentScreen === 'PLAYING' && gamePaused) {
+      gamePaused = false;
+      tiltState = { lastGestureTime: 0, waitingForNeutral: false };
+      if (gameState.tiltAvailable) {
+        window.addEventListener('deviceorientation', handleOrientation);
+      }
+      gameState.timerInterval = setInterval(() => {
+        gameState.timeRemaining--;
+        updateTimerDisplay();
+        if (gameState.timeRemaining <= 5 && gameState.timeRemaining > 0) {
+          playTickSound();
+        }
+        if (gameState.timeRemaining <= 0) {
+          endRound();
+        }
+      }, 1000);
+    }
   }
 }
+
+// Back to menu button on rotate overlay
+document.getElementById('rotate-back-btn').addEventListener('click', () => {
+  gamePaused = false;
+  // Clean up playing state if active
+  if (gameState.currentScreen === 'PLAYING' || gameState.currentScreen === 'COUNTDOWN') {
+    clearInterval(gameState.timerInterval);
+    gameState.timerInterval = null;
+    clearInterval(countdownTimer);
+    countdownTimer = null;
+    window.removeEventListener('deviceorientation', handleOrientation);
+    document.body.classList.remove('playing-active');
+    releaseWakeLock();
+  }
+  document.getElementById('rotate-overlay').style.display = 'none';
+  // Reset game state
+  gameState.teams = [];
+  gameState.currentTeamIndex = 0;
+  gameState.currentRound = 0;
+  gameState.wordsUsed = new Set();
+  gameState.currentScreen = 'SETUP';
+  Object.values(screens).forEach(s => s.classList.remove('active'));
+  screens.SETUP.classList.add('active');
+});
 
 window.addEventListener('resize', checkOrientation);
 window.addEventListener('orientationchange', checkOrientation);
