@@ -172,6 +172,12 @@ function enterReady() {
 
 document.getElementById('go-btn').addEventListener('click', async () => {
   initAudio();
+  // Request fullscreen to hide address bar
+  try {
+    const el = document.documentElement;
+    const rfs = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+    if (rfs) await rfs.call(el);
+  } catch (e) {}
   await requestOrientationPermission();
   transition('PLAYING');
 });
