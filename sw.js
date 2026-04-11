@@ -1,4 +1,4 @@
-const CACHE_NAME = 'headsup-v6';
+const CACHE_NAME = 'headsup-v7';
 const ASSETS = [
   './',
   './index.html',
