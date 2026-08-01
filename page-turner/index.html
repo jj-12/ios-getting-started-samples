@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <title>Page Turner</title>
+  <meta name="description" content="Hands-free sheet music page turner - wink to turn the page">
+  <meta name="theme-color" content="#0f1115">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Page Turner">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ============ Library view ============ -->
+  <div id="library-view" class="view">
+    <header class="lib-header">
+      <h1>Page Turner</h1>
+      <button id="import-btn" class="btn btn-primary">+ Import PDF</button>
+      <input type="file" id="file-input" accept="application/pdf,.pdf" multiple hidden>
+    </header>
+
+    <div id="import-status" class="import-status hidden"></div>
+
+    <div id="library-grid" class="library-grid"></div>
+
+    <div id="library-empty" class="empty-state hidden">
+      <div class="empty-icon">&#9835;</div>
+      <h2>No scores yet</h2>
+      <p>Tap <strong>Import PDF</strong> to add sheet music from the Files app
+        (iCloud Drive, On My iPad, downloads&hellip;).</p>
+      <p class="hint">From <strong>Notability</strong>: open the note, tap Share
+        &rarr; <em>PDF</em> &rarr; <em>Save to Files</em>, then import it here.</p>
+    </div>
+
+    <footer class="lib-footer">
+      <span id="version-label">v1</span>
+      <span class="hint">Add to Home Screen for offline use &amp; safe storage</span>
+    </footer>
+  </div>
+
+  <!-- ============ Reader view ============ -->
+  <div id="reader-view" class="view hidden">
+    <canvas id="page-canvas"></canvas>
+
+    <div id="turn-flash-fwd" class="turn-flash right"></div>
+    <div id="turn-flash-back" class="turn-flash left"></div>
+
+    <div id="tap-left" class="tap-zone left" aria-label="Previous page"></div>
+    <div id="tap-right" class="tap-zone right" aria-label="Next page"></div>
+    <div id="tap-center" class="tap-zone center" aria-label="Toggle controls"></div>
+
+    <div id="reader-bar" class="reader-bar">
+      <button id="back-btn" class="btn btn-ghost">&lsaquo; Library</button>
+      <span id="doc-title" class="doc-title"></span>
+      <span id="page-indicator" class="page-indicator"></span>
+      <button id="settings-btn" class="btn btn-ghost" aria-label="Settings">&#9881;</button>
+      <button id="arm-btn" class="btn btn-arm">&#128065; Start tracking</button>
+    </div>
+
+    <!-- Tracking HUD -->
+    <div id="hud" class="hud hidden">
+      <div id="cam-wrap" class="cam-wrap"></div>
+      <div class="hud-row">
+        <span id="eye-back-dot" class="eye-dot" title="Back eye"></span>
+        <span id="hud-text" class="hud-text">&hellip;</span>
+        <span id="eye-fwd-dot" class="eye-dot" title="Forward eye"></span>
+      </div>
+      <div class="hold-progress"><div id="hold-progress-fill"></div></div>
+    </div>
+  </div>
+
+  <!-- ============ Calibration overlay ============ -->
+  <div id="calibrate-view" class="view overlay hidden">
+    <div class="cal-card">
+      <h2 id="cal-title">Set up wink tracking</h2>
+      <div id="cal-video-slot" class="cal-video-slot"></div>
+      <p id="cal-text" class="cal-text">Starting camera&hellip;</p>
+      <div class="cal-progress"><div id="cal-progress-fill"></div></div>
+      <div class="cal-buttons">
+        <button id="cal-skip" class="btn btn-ghost">Skip (use defaults)</button>
+        <button id="cal-cancel" class="btn btn-ghost">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Settings dialog ============ -->
+  <dialog id="settings-dialog">
+    <h2>Tracking settings</h2>
+
+    <label class="setting">
+      <span>Wink hold time: <strong id="hold-label">0.40s</strong></span>
+      <input type="range" id="hold-range" min="250" max="800" step="50" value="400">
+      <span class="hint">Longer = fewer false turns, but you must hold the wink longer.</span>
+    </label>
+
+    <label class="setting">
+      <span>Cooldown between turns: <strong id="cooldown-label">1.2s</strong></span>
+      <input type="range" id="cooldown-range" min="600" max="2500" step="100" value="1200">
+    </label>
+
+    <label class="setting row">
+      <input type="checkbox" id="gaze-gate" checked>
+      <span>Only turn while looking at the camera</span>
+    </label>
+
+    <label class="setting row">
+      <input type="checkbox" id="swap-eyes">
+      <span>Swap eyes (right wink &harr; left wink)</span>
+    </label>
+
+    <label class="setting row">
+      <input type="checkbox" id="show-preview" checked>
+      <span>Show camera preview while playing</span>
+    </label>
+
+    <div class="setting">
+      <button id="recalibrate-btn" class="btn btn-primary">Recalibrate winks</button>
+    </div>
+
+    <div class="dialog-buttons">
+      <button id="settings-close" class="btn btn-primary">Done</button>
+    </div>
+  </dialog>
+
+  <script src="wink.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
