@@ -11,11 +11,16 @@ const VISION_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14
 const MODEL_URL =
   'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
 
-const VERSION = 'v2';
+const VERSION = 'v3';
 const {
   processWink,
   createWinkState,
   winkProgress,
+  channelThreshold,
+  processCapture,
+  createCaptureState,
+  captureProgress,
+  deriveEyeThresholds,
   gazeFeatures,
   isGazeOnTarget,
   WINK_CONFIG,
@@ -38,6 +43,12 @@ const DEFAULT_SETTINGS = {
   // head-and-eyes-neutral, which roughly means facing the camera.
   gazeGate: true,
   gazeBaseline: null,
+  // Per-channel closed/open thresholds learned in calibration. Crucial when
+  // the camera sits to one side: the far eye's scores are compressed and a
+  // single fixed threshold makes only near-eye winks register.
+  eyeThresholds: null,
+  hudPos: 'br', // camera HUD corner: br | tr | tl | bl
+  hudMin: false,
 };
 
 let settings = loadSettings();
@@ -53,7 +64,12 @@ function saveSettings() {
   localStorage.setItem('pt-settings', JSON.stringify(settings));
 }
 function winkConfig() {
-  return { ...WINK_CONFIG, HOLD_MS: settings.holdMs, COOLDOWN_MS: settings.cooldownMs };
+  const cfg = { ...WINK_CONFIG, HOLD_MS: settings.holdMs, COOLDOWN_MS: settings.cooldownMs };
+  if (settings.eyeThresholds) {
+    cfg.CLOSED_MIN = settings.eyeThresholds.closedMin;
+    cfg.OPEN_MAX = settings.eyeThresholds.openMax;
+  }
+  return cfg;
 }
 
 /* ============ IndexedDB library ============ */
@@ -261,6 +277,9 @@ async function openDoc(id) {
   idbPut('meta', meta);
 
   $('doc-title').textContent = meta.name;
+  const slider = $('page-slider');
+  slider.max = currentPdf.numPages;
+  slider.value = currentPage;
   libraryView.classList.add('hidden');
   readerView.classList.remove('hidden');
   showBar(true);
@@ -289,11 +308,24 @@ function canvasSize() {
   return { w: readerView.clientWidth, h: readerView.clientHeight, dpr };
 }
 
+/** Pages shown at once: two side by side in landscape, like an open book. */
+function pagesPerView() {
+  if (!currentPdf || currentPdf.numPages < 2) return 1;
+  return readerView.clientWidth > readerView.clientHeight ? 2 : 1;
+}
+
+/** Align a page number to the start of its spread (odd page) in 2-up mode. */
+function alignPage(p) {
+  return pagesPerView() === 2 ? p - ((p - 1) % 2) : p;
+}
+
 async function renderPageToCanvas(pageNum) {
   const { w, h, dpr } = canvasSize();
+  const n = pagesPerView();
+  const boxW = (w - (n - 1) * 8) / n;
   const page = await currentPdf.getPage(pageNum);
   const base = page.getViewport({ scale: 1 });
-  const scale = Math.min(w / base.width, h / base.height) * dpr;
+  const scale = Math.min(boxW / base.width, h / base.height) * dpr;
   const viewport = page.getViewport({ scale });
   const off = document.createElement('canvas');
   off.width = Math.floor(viewport.width);
@@ -309,50 +341,70 @@ async function getRenderedPage(pageNum) {
   if (pageCache.has(pageNum)) return pageCache.get(pageNum);
   const off = await renderPageToCanvas(pageNum);
   pageCache.set(pageNum, off);
-  // Keep the cache small: current page +/- 2
+  // Keep the cache small: current spread +/- one spread
   for (const key of pageCache.keys()) {
-    if (Math.abs(key - currentPage) > 2) pageCache.delete(key);
+    if (Math.abs(key - currentPage) > 3) pageCache.delete(key);
   }
   return off;
 }
 
 async function showPage(pageNum) {
   if (!currentPdf) return;
+  const clamped = Math.min(Math.max(pageNum, 1), currentPdf.numPages);
+  const start = alignPage(clamped);
+  currentPage = start;
   const token = ++renderToken;
   const { w, h, dpr } = canvasSize();
-  const off = await getRenderedPage(pageNum);
+
+  const nums = [start];
+  if (pagesPerView() === 2 && start + 1 <= currentPdf.numPages) nums.push(start + 1);
+  const offs = await Promise.all(nums.map(getRenderedPage));
   if (token !== renderToken || !currentPdf) return; // superseded
 
   pageCanvas.width = Math.floor(w * dpr);
   pageCanvas.height = Math.floor(h * dpr);
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-  const x = Math.floor((pageCanvas.width - off.width) / 2);
-  const y = Math.floor((pageCanvas.height - off.height) / 2);
-  ctx.drawImage(off, x, y);
+  const gap = offs.length === 2 ? Math.floor(8 * dpr) : 0;
+  const total = offs.reduce((sum, o) => sum + o.width, 0) + gap * (offs.length - 1);
+  let x = Math.floor((pageCanvas.width - total) / 2);
+  for (const off of offs) {
+    ctx.drawImage(off, x, Math.floor((pageCanvas.height - off.height) / 2));
+    x += off.width + gap;
+  }
 
-  $('page-indicator').textContent = `${pageNum} / ${currentPdf.numPages}`;
+  const label = nums.length === 2 ? `${start}–${start + 1}` : `${start}`;
+  $('page-indicator').textContent = `${label} / ${currentPdf.numPages}`;
+  $('page-slider').value = start;
 
-  // Pre-render neighbors so wink turns are instant.
-  if (pageNum < currentPdf.numPages) getRenderedPage(pageNum + 1).catch(() => {});
-  if (pageNum > 1) getRenderedPage(pageNum - 1).catch(() => {});
+  // Pre-render the next/previous spread so wink turns are instant.
+  const step = pagesPerView();
+  for (const p of [start + step, start + step + 1, start - step]) {
+    if (p >= 1 && p <= currentPdf.numPages && (p - start) < step * 2) {
+      getRenderedPage(p).catch(() => {});
+    }
+  }
 }
 
-function goTo(delta, source) {
+function saveLastPage() {
+  if (currentDoc) {
+    currentDoc.lastPage = currentPage;
+    idbPut('meta', currentDoc);
+  }
+}
+
+function goTo(dir, source) {
   if (!currentPdf) return;
-  const target = currentPage + delta;
+  const step = pagesPerView();
+  const target = alignPage(currentPage) + dir * step;
   if (target < 1 || target > currentPdf.numPages) {
     showBar(true);
     scheduleBarHide();
     return;
   }
-  currentPage = target;
-  showPage(currentPage);
-  if (currentDoc) {
-    currentDoc.lastPage = currentPage;
-    idbPut('meta', currentDoc);
-  }
-  if (source === 'wink') flashTurn(delta > 0);
+  showPage(target); // sets currentPage synchronously
+  saveLastPage();
+  if (source === 'wink') flashTurn(dir > 0);
 }
 
 function flashTurn(forward) {
@@ -371,10 +423,27 @@ $('tap-center').addEventListener('click', () => {
 function showBar(show) {
   readerBar.classList.toggle('bar-hidden', !show);
 }
+// The bar only auto-hides while tracking is armed (performance mode);
+// otherwise it stays put so Library / settings are always reachable.
 function scheduleBarHide() {
   clearTimeout(barTimer);
-  barTimer = setTimeout(() => showBar(false), 4000);
+  if (armState === 'armed') {
+    barTimer = setTimeout(() => showBar(false), 4000);
+  }
 }
+
+// Page slider: preview the target while dragging, jump on release.
+$('page-slider').addEventListener('input', (e) => {
+  clearTimeout(barTimer);
+  if (!currentPdf) return;
+  $('page-indicator').textContent = `${e.target.value} / ${currentPdf.numPages}`;
+});
+$('page-slider').addEventListener('change', (e) => {
+  if (!currentPdf) return;
+  showPage(Number(e.target.value));
+  saveLastPage();
+  scheduleBarHide();
+});
 
 window.addEventListener('resize', () => {
   if (!currentPdf) return;
@@ -537,10 +606,13 @@ function updateHud(frame, now, gateOk) {
     return;
   }
 
-  const fwdScore = settings.forwardChannel === 'left' ? frame.left : frame.right;
-  const backScore = settings.forwardChannel === 'left' ? frame.right : frame.left;
-  fwdDot.className = 'eye-dot' + (fired ? ' fired' : fwdScore > 0.55 ? ' closed' : '');
-  backDot.className = 'eye-dot' + (backScore > 0.55 ? ' closed' : '');
+  const cfg = winkConfig();
+  const fwdChan = settings.forwardChannel === 'left' ? 'left' : 'right';
+  const backChan = fwdChan === 'left' ? 'right' : 'left';
+  const fwdClosed = frame[fwdChan] > channelThreshold(cfg.CLOSED_MIN, fwdChan);
+  const backClosed = frame[backChan] > channelThreshold(cfg.CLOSED_MIN, backChan);
+  fwdDot.className = 'eye-dot' + (fired ? ' fired' : fwdClosed ? ' closed' : '');
+  backDot.className = 'eye-dot' + (backClosed ? ' closed' : '');
 
   if (armState === 'armed') {
     const holding = winkState.candidateEye !== null;
@@ -580,7 +652,7 @@ async function startTracking() {
     return false;
   }
   hud.classList.remove('hidden');
-  applyPreviewSetting();
+  applyHudLayout();
   winkState = createWinkState();
   lastGazeOkTime = 0;
   lastVideoTime = -1;
@@ -608,6 +680,12 @@ function setArmState(next) {
       : next === 'paused'
         ? '&#9208; Paused'
         : '&#128065; Start tracking';
+  if (next === 'armed') {
+    scheduleBarHide();
+  } else {
+    clearTimeout(barTimer);
+    showBar(true);
+  }
 }
 
 armBtn.addEventListener('click', async () => {
@@ -627,14 +705,32 @@ armBtn.addEventListener('click', async () => {
   scheduleBarHide();
 });
 
-function applyPreviewSetting() {
+const HUD_POSITIONS = ['br', 'tr', 'tl', 'bl'];
+
+function applyHudLayout() {
+  // Keep the video attached and playing even when visually collapsed -
+  // iOS can stop delivering frames from fully hidden/detached videos,
+  // which would silently kill tracking. CSS collapses it to 1px instead.
   const wrap = $('cam-wrap');
-  if (settings.showPreview) {
-    if (video.parentElement !== wrap) wrap.appendChild(video);
-  } else if (video.parentElement === wrap) {
-    wrap.removeChild(video);
-  }
+  if (!calibration.active && video.parentElement !== wrap) wrap.appendChild(video);
+  hud.classList.remove('pos-br', 'pos-tr', 'pos-tl', 'pos-bl');
+  hud.classList.add('pos-' + (HUD_POSITIONS.includes(settings.hudPos) ? settings.hudPos : 'br'));
+  hud.classList.toggle('minimized', !!settings.hudMin);
+  hud.classList.toggle('preview-off', !settings.showPreview);
+  $('hud-min').textContent = settings.hudMin ? '□' : '–';
 }
+
+$('hud-move').addEventListener('click', () => {
+  const i = HUD_POSITIONS.indexOf(settings.hudPos);
+  settings.hudPos = HUD_POSITIONS[(i + 1) % HUD_POSITIONS.length];
+  saveSettings();
+  applyHudLayout();
+});
+$('hud-min').addEventListener('click', () => {
+  settings.hudMin = !settings.hudMin;
+  saveSettings();
+  applyHudLayout();
+});
 
 /* ============ Calibration ============ */
 
@@ -644,13 +740,14 @@ const calibration = {
   faceSince: 0,
   gazeSince: 0,
   gazeSamples: [],
-  baseline: null,
-  state: createWinkState(),
+  openSamples: [],      // per-eye open scores collected during the gaze step
+  openBaseline: null,   // {left, right} mean open scores
+  baseline: null,       // gaze feature baseline
+  capState: createCaptureState(),
+  peaks: {},            // {left?, right?} wink peak per channel
   forwardChannel: null,
   lastGazeOk: 0,
 };
-
-const CAL_HOLD = { ...WINK_CONFIG, HOLD_MS: 500, COOLDOWN_MS: 800 };
 
 async function startCalibration() {
   calView.classList.remove('hidden');
@@ -664,8 +761,11 @@ async function startCalibration() {
   calibration.faceSince = 0;
   calibration.gazeSince = 0;
   calibration.gazeSamples = [];
+  calibration.openSamples = [];
+  calibration.openBaseline = null;
   calibration.baseline = null;
-  calibration.state = createWinkState();
+  calibration.capState = createCaptureState();
+  calibration.peaks = {};
   calibration.forwardChannel = null;
   calibration.lastGazeOk = 0;
 
@@ -715,11 +815,13 @@ function calibrationFrame(frame, now) {
     if (!frame) {
       cal.gazeSince = 0;
       cal.gazeSamples = [];
+      cal.openSamples = [];
       fill.style.width = '0%';
       return;
     }
     if (!cal.gazeSince) cal.gazeSince = now;
     cal.gazeSamples.push(frame.gaze);
+    cal.openSamples.push({ left: frame.left, right: frame.right });
     const held = now - cal.gazeSince;
     fill.style.width = `${Math.min(100, (held / 1200) * 100)}%`;
     if (held > 1200) {
@@ -733,8 +835,16 @@ function calibrationFrame(frame, now) {
         }),
         { nx: 0, ny: 0, h: 0, v: 0 }
       );
+      // Per-eye open baseline: how "closed" each eye scores when both are
+      // open, from this camera's angle. Feeds the wink capture below and
+      // the per-channel live thresholds.
+      const m = cal.openSamples.length;
+      cal.openBaseline = cal.openSamples.reduce(
+        (acc, s) => ({ left: acc.left + s.left / m, right: acc.right + s.right / m }),
+        { left: 0, right: 0 }
+      );
       cal.step = 'forward';
-      cal.state = createWinkState();
+      cal.capState = createCaptureState();
       fill.style.width = '0%';
       $('cal-text').innerHTML =
         'Keep looking at the camera and wink your <strong>RIGHT</strong> eye ' +
@@ -751,29 +861,42 @@ function calibrationFrame(frame, now) {
       gateOk = now - cal.lastGazeOk < GAZE_CONFIG.RECENT_MS;
     }
 
+    // Capture is judged relative to each eye's measured open baseline, so
+    // an eye the camera sees at an angle (compressed scores) still works.
+    if (!gateOk) {
+      cal.capState = createCaptureState();
+      fill.style.width = '0%';
+      return;
+    }
     const r = frame
-      ? processWink(frame.left, frame.right, now, cal.state, CAL_HOLD, gateOk)
-      : processWink(null, null, now, cal.state, CAL_HOLD, gateOk);
-    cal.state = r.state;
-    fill.style.width = `${Math.round(winkProgress(cal.state, now, CAL_HOLD) * 100)}%`;
+      ? processCapture(frame.left, frame.right, now, cal.capState, cal.openBaseline)
+      : { captured: null, state: createCaptureState() };
+    cal.capState = r.state;
+    fill.style.width = `${Math.round(captureProgress(cal.capState, now) * 100)}%`;
 
-    if (!r.action) return;
+    if (!r.captured) return;
 
     if (cal.step === 'forward') {
-      cal.forwardChannel = r.action;
+      cal.forwardChannel = r.captured.eye;
+      cal.peaks[r.captured.eye] = r.captured.peak;
       cal.step = 'back';
-      cal.state = createWinkState();
+      cal.capState = createCaptureState();
       fill.style.width = '0%';
       $('cal-text').innerHTML =
         'Got it! Still looking at the camera, wink your <strong>LEFT</strong> eye ' +
         '(previous-page eye) and hold.';
-    } else if (r.action === cal.forwardChannel) {
+    } else if (r.captured.eye === cal.forwardChannel) {
       $('cal-text').innerHTML =
         'That looked like the <strong>same eye</strong>. Wink the <strong>other</strong> eye and hold.';
       fill.style.width = '0%';
     } else {
+      cal.peaks[r.captured.eye] = r.captured.peak;
       settings.forwardChannel = cal.forwardChannel;
       settings.gazeBaseline = cal.baseline;
+      settings.eyeThresholds = deriveEyeThresholds(cal.openBaseline, {
+        left: cal.peaks.left,
+        right: cal.peaks.right,
+      });
       settings.calibrated = true;
       saveSettings();
       finishCalibration(true);
@@ -785,7 +908,7 @@ async function finishCalibration(success) {
   calibration.active = false;
   calView.classList.add('hidden');
   if (success && currentPdf) {
-    applyPreviewSetting();
+    applyHudLayout();
     if (await startTracking()) setArmState('armed');
   } else if (!currentPdf) {
     stopTracking();
@@ -838,7 +961,7 @@ $('swap-eyes').addEventListener('change', () => {
 $('show-preview').addEventListener('change', (e) => {
   settings.showPreview = e.target.checked;
   saveSettings();
-  applyPreviewSetting();
+  applyHudLayout();
 });
 $('recalibrate-btn').addEventListener('click', () => {
   settingsDialog.close();

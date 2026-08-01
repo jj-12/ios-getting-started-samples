@@ -4,11 +4,17 @@ const {
   processWink,
   createWinkState,
   winkProgress,
+  channelThreshold,
+  processCapture,
+  createCaptureState,
+  captureProgress,
+  deriveEyeThresholds,
   gazeFeatures,
   gazeDistance,
   isGazeOnTarget,
   WINK_CONFIG,
   GAZE_CONFIG,
+  CAPTURE_CONFIG,
 } = require('../page-turner/wink.js');
 
 const config = WINK_CONFIG;
@@ -400,6 +406,165 @@ describe('gazeFeatures / gazeDistance / isGazeOnTarget', () => {
       gazeDistance(headOff, baseline, GAZE_CONFIG) >
         gazeDistance(eyesOff, baseline, GAZE_CONFIG)
     );
+  });
+});
+
+describe('per-channel thresholds (oblique camera angle)', () => {
+  // Camera to the user's side: the far eye's scores are compressed.
+  // Far eye: rests at 0.25, winks only reach ~0.5. Near eye: rests at
+  // 0.05, winks reach 0.95. With the default single threshold (0.55)
+  // the far-eye wink never fires - this is the "only right winks work
+  // when the camera is on the right" bug.
+  const obliqueBaseline = { left: 0.05, right: 0.25 }; // right = far eye
+  const farWink = { left: 0.06, right: 0.5 };          // winking the far eye
+  const nearWink = { left: 0.9, right: 0.27 };         // winking the near eye
+
+  it('channelThreshold resolves numbers and per-channel objects', () => {
+    assert.equal(channelThreshold(0.5, 'left'), 0.5);
+    assert.equal(channelThreshold({ left: 0.3, right: 0.6 }, 'left'), 0.3);
+    assert.equal(channelThreshold({ left: 0.3, right: 0.6 }, 'right'), 0.6);
+  });
+
+  it('reproduces the bug with a single fixed threshold', () => {
+    const { fired } = simulate(repeat(farWink, framesFor(config.HOLD_MS * 3)));
+    assert.equal(fired.length, 0, 'far-eye wink is invisible to fixed thresholds');
+  });
+
+  it('capture -> derive -> live wink works for the far eye', () => {
+    // 1. Calibration captures both winks relative to baseline
+    let capState = createCaptureState();
+    let now = 1000;
+    let farCap = null;
+    for (let i = 0; i < framesFor(CAPTURE_CONFIG.HOLD_MS) + 2 && !farCap; i++) {
+      const r = processCapture(farWink.left, farWink.right, now, capState, obliqueBaseline);
+      capState = r.state;
+      farCap = r.captured;
+      now += FRAME;
+    }
+    assert.ok(farCap, 'capture must detect the far-eye wink');
+    assert.equal(farCap.eye, 'right');
+
+    let nearCap = null;
+    capState = createCaptureState();
+    for (let i = 0; i < framesFor(CAPTURE_CONFIG.HOLD_MS) + 2 && !nearCap; i++) {
+      const r = processCapture(nearWink.left, nearWink.right, now, capState, obliqueBaseline);
+      capState = r.state;
+      nearCap = r.captured;
+      now += FRAME;
+    }
+    assert.ok(nearCap, 'capture must detect the near-eye wink');
+    assert.equal(nearCap.eye, 'left');
+
+    // 2. Derive per-channel thresholds
+    const derived = deriveEyeThresholds(obliqueBaseline, {
+      left: nearCap.peak,
+      right: farCap.peak,
+    });
+    assert.ok(derived.closedMin.right < derived.closedMin.left,
+      'far eye must get an easier closed bar');
+    assert.ok(derived.openMax.right > obliqueBaseline.right,
+      'far eye resting score must count as open');
+
+    // 3. Live detection with derived thresholds: BOTH eyes now fire
+    const liveCfg = { ...config, CLOSED_MIN: derived.closedMin, OPEN_MAX: derived.openMax };
+    const far = simulate([
+      ...repeat({ left: 0.05, right: 0.25 }, 3),
+      ...repeat(farWink, framesFor(config.HOLD_MS) + 2),
+    ], 1000, liveCfg);
+    assert.equal(far.fired.length, 1);
+    assert.equal(far.fired[0].action, 'right');
+
+    const near = simulate([
+      ...repeat({ left: 0.05, right: 0.25 }, 3),
+      ...repeat(nearWink, framesFor(config.HOLD_MS) + 2),
+    ], 1000, liveCfg);
+    assert.equal(near.fired.length, 1);
+    assert.equal(near.fired[0].action, 'left');
+  });
+
+  it('still rejects blinks with derived per-channel thresholds', () => {
+    const derived = deriveEyeThresholds(obliqueBaseline, { left: 0.95, right: 0.5 });
+    const liveCfg = { ...config, CLOSED_MIN: derived.closedMin, OPEN_MAX: derived.openMax };
+    // A blink seen at this angle: near eye 0.9, far eye 0.5 (its max)
+    const { fired } = simulate([
+      ...repeat({ left: 0.05, right: 0.25 }, 3),
+      ...repeat({ left: 0.9, right: 0.5 }, framesFor(200)),
+      ...repeat({ left: 0.05, right: 0.25 }, 3),
+    ], 1000, liveCfg);
+    assert.equal(fired.length, 0, 'both eyes over their own closed bars = blink');
+  });
+});
+
+describe('processCapture', () => {
+  const baseline = { left: 0.05, right: 0.05 };
+
+  it('does not capture a blink (both eyes rise)', () => {
+    let state = createCaptureState();
+    let now = 1000;
+    for (let i = 0; i < framesFor(CAPTURE_CONFIG.HOLD_MS * 2); i++) {
+      const r = processCapture(0.8, 0.8, now, state, baseline);
+      state = r.state;
+      assert.equal(r.captured, null);
+      now += FRAME;
+    }
+  });
+
+  it('requires the hold time', () => {
+    let state = createCaptureState();
+    let now = 1000;
+    for (let i = 0; i < framesFor(CAPTURE_CONFIG.HOLD_MS) - 3; i++) {
+      const r = processCapture(0.9, 0.05, now, state, baseline);
+      state = r.state;
+      assert.equal(r.captured, null);
+      now += FRAME;
+    }
+    // Dropping the wink resets
+    const r = processCapture(0.05, 0.05, now, state, baseline);
+    assert.equal(r.state.eye, null);
+  });
+
+  it('records the peak score across the hold', () => {
+    let state = createCaptureState();
+    let now = 1000;
+    let captured = null;
+    const scores = [0.5, 0.7, 0.65, 0.6];
+    for (let i = 0; !captured && i < framesFor(CAPTURE_CONFIG.HOLD_MS) + 2; i++) {
+      const r = processCapture(scores[Math.min(i, 3)], 0.05, now, state, baseline);
+      state = r.state;
+      captured = r.captured;
+      now += FRAME;
+    }
+    assert.ok(captured);
+    assert.equal(captured.eye, 'left');
+    assert.ok(Math.abs(captured.peak - 0.7) < 1e-9, `peak should be 0.7, got ${captured.peak}`);
+  });
+
+  it('reports hold progress', () => {
+    let state = createCaptureState();
+    const r = processCapture(0.9, 0.05, 1000, state, baseline);
+    const p = captureProgress(r.state, 1000 + CAPTURE_CONFIG.HOLD_MS / 2);
+    assert.ok(p > 0.4 && p < 0.6);
+  });
+});
+
+describe('deriveEyeThresholds', () => {
+  it('keeps openMax strictly below closedMin per channel', () => {
+    const t = deriveEyeThresholds({ left: 0.3, right: 0.05 }, { left: 0.5, right: 0.95 });
+    for (const chan of ['left', 'right']) {
+      assert.ok(t.openMax[chan] < t.closedMin[chan]);
+    }
+  });
+
+  it('guards against a degenerate capture (peak barely above baseline)', () => {
+    const t = deriveEyeThresholds({ left: 0.4, right: 0.05 }, { left: 0.42, right: 0.9 });
+    assert.ok(t.closedMin.left > t.openMax.left);
+    assert.ok(t.closedMin.left >= 0.25 && t.closedMin.left <= 0.75);
+  });
+
+  it('gives symmetric eyes symmetric thresholds', () => {
+    const t = deriveEyeThresholds({ left: 0.05, right: 0.05 }, { left: 0.9, right: 0.9 });
+    assert.equal(t.closedMin.left, t.closedMin.right);
+    assert.equal(t.openMax.left, t.openMax.right);
   });
 });
 

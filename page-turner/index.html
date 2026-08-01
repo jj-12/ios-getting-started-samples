@@ -56,15 +56,25 @@
     <div id="tap-center" class="tap-zone center" aria-label="Toggle controls"></div>
 
     <div id="reader-bar" class="reader-bar">
-      <button id="back-btn" class="btn btn-ghost">&lsaquo; Library</button>
-      <span id="doc-title" class="doc-title"></span>
-      <span id="page-indicator" class="page-indicator"></span>
-      <button id="settings-btn" class="btn btn-ghost" aria-label="Settings">&#9881;</button>
-      <button id="arm-btn" class="btn btn-arm">&#128065; Start tracking</button>
+      <div class="bar-row">
+        <button id="back-btn" class="btn btn-ghost">&lsaquo; Library</button>
+        <span id="doc-title" class="doc-title"></span>
+        <span id="page-indicator" class="page-indicator"></span>
+        <button id="settings-btn" class="btn btn-ghost" aria-label="Settings">&#9881;</button>
+        <button id="arm-btn" class="btn btn-arm">&#128065; Start tracking</button>
+      </div>
+      <div class="bar-row scrub-row">
+        <input type="range" id="page-slider" min="1" max="1" step="1" value="1"
+               aria-label="Jump to page">
+      </div>
     </div>
 
     <!-- Tracking HUD -->
     <div id="hud" class="hud hidden">
+      <div class="hud-ctl">
+        <button id="hud-move" aria-label="Move camera view to another corner">&#10530;</button>
+        <button id="hud-min" aria-label="Minimize camera view">&ndash;</button>
+      </div>
       <div id="cam-wrap" class="cam-wrap"></div>
       <div class="hud-row">
         <span id="eye-back-dot" class="eye-dot" title="Back eye"></span>

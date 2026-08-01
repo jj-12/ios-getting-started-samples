@@ -12,7 +12,15 @@ A PWA for iPad that displays PDF sheet music and turns pages when you **wink**
   counts when one eye is closed while the other stays clearly open, held
   deliberately, with a cooldown so one wink never turns two pages.
 - **Tap fallback** — tap the right/left edge of the screen to turn pages
-  manually at any time.
+  manually at any time; tap the middle to show/hide the controls.
+- **Fast navigation** — drag the page slider in the top bar to jump
+  anywhere in the score; the bar stays visible except while tracking is
+  armed (it auto-hides during performance; tap the middle to bring it back).
+- **Two-page spread** — rotate the iPad to landscape and pages display side
+  by side like an open book (turns move two pages at a time).
+- **Movable camera view** — the tracking panel can be minimized to a slim
+  status pill or moved between all four corners with the buttons on it, so
+  it never covers the music.
 
 ## Use it
 
@@ -65,6 +73,15 @@ The gaze gate only applies at the *start* of a wink — once the hold begins,
 looking away or the closed eye skewing the gaze estimate can't cancel it.
 The HUD shows "Look at camera…" vs "Ready" so you always know whether a
 wink will count.
+
+Thresholds are **per eye**, learned during calibration. This matters when
+the camera sits to one side of your face (portrait orientation on most
+iPads): the eye farther from the camera produces compressed scores — its
+winks peak lower and its resting score sits higher — so a single fixed
+threshold would only ever register the near eye. Calibration measures each
+eye's open baseline and wink peak from the camera's actual viewpoint and
+sets each eye's bars accordingly. If one eye ever stops registering,
+recalibrate from Settings (⚙) in your playing position.
 
 No video ever leaves the device; the camera stream is processed locally and
 nothing is uploaded.
