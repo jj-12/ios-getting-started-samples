@@ -1,0 +1,68 @@
+# Page Turner — Hands-Free Sheet Music Viewer
+
+A PWA for iPad that displays PDF sheet music and turns pages when you **wink**
+— so your hands never leave the piano.
+
+- **Wink your RIGHT eye** (hold ~0.4s) → next page
+- **Wink your LEFT eye** (hold ~0.4s) → previous page
+- **Blinks are ignored** — a blink closes both eyes together; a wink only
+  counts when one eye is closed while the other stays clearly open, held
+  deliberately, with a cooldown so one wink never turns two pages.
+- **Tap fallback** — tap the right/left edge of the screen to turn pages
+  manually at any time.
+
+## Use it
+
+Open <https://jj-12.github.io/ios-getting-started-samples/page-turner/> on the
+iPad, then **Share → Add to Home Screen**. Installing it matters for two
+reasons: iOS protects the app's stored PDFs from cache eviction, and it runs
+full-screen without Safari chrome.
+
+## Getting music in (incl. Notability)
+
+The app imports PDFs through the iOS Files picker:
+
+1. In **Notability**: open the note → Share → **PDF** → **Save to Files**.
+2. In **Page Turner**: tap **Import PDF** and pick the file (iCloud Drive,
+   On My iPad, Downloads, etc.).
+
+Imported scores are stored inside the app (IndexedDB), so the library and the
+viewer work fully offline. The original PDF stays in Files as your backup.
+
+## First-time setup
+
+The first time you tap **Start tracking**, a short calibration runs:
+
+1. Sit in your normal playing position so the camera learns your posture.
+2. Wink your right eye and hold — this becomes "next page".
+3. Wink your left eye and hold — this becomes "previous page".
+
+Calibration also resolves camera mirroring automatically (front cameras flip
+left/right, a classic source of backwards page turns). You can recalibrate,
+swap eyes, or adjust the wink hold time in Settings (⚙) any time.
+
+## How wink detection works
+
+Face tracking runs entirely on-device in the browser using MediaPipe Face
+Landmarker (WASM/GPU), which outputs per-eye "closedness" blendshape scores.
+The detector (`wink.js`, pure logic, unit-tested in `test/wink.test.js`)
+fires only when **all** of these hold:
+
+| Guard | Purpose |
+| --- | --- |
+| One eye closed **and** the other clearly open | rejects blinks and squints |
+| Held for `HOLD_MS` (default 400ms, adjustable) | rejects twitches and blink tails |
+| Both-eyes-closed cancels + guards for 300ms | rejects asymmetric blink onset/reopen |
+| 1.2s cooldown + both eyes must reopen | one wink = one page turn |
+
+No video ever leaves the device; the camera stream is processed locally and
+nothing is uploaded.
+
+## Notes & limitations
+
+- Requires a fairly recent iPadOS (16.4+) for wake lock and module workers.
+- iOS may re-ask for camera permission when the app launches, depending on
+  iPadOS version — one tap before you start playing.
+- Good, even lighting on your face improves tracking; strong backlight hurts.
+- First online run downloads pdf.js and the MediaPipe model (~10 MB); the
+  service worker caches everything after that for offline use.

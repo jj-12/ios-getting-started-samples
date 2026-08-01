@@ -1,3 +1,15 @@
+# PWA Playground
+
+Small installable web apps hosted on GitHub Pages:
+
+- **Heads Up! Party Game** (this page, at the site root) — tilt-to-guess party game
+- **[Page Turner](page-turner/)** — hands-free sheet music viewer: wink to turn
+  the page while playing piano. Live at
+  <https://jj-12.github.io/ios-getting-started-samples/page-turner/>
+  ([details](page-turner/README.md))
+
+---
+
 # Heads Up! Party Game
 
 A mobile-friendly "Heads Up" style guessing game built as a Progressive Web App. Perfect for playing with family and friends while waiting in line!
