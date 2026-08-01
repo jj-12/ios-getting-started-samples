@@ -186,12 +186,20 @@ html, body {
   left: 0;
   right: 0;
   z-index: 10;
+  padding: calc(env(safe-area-inset-top, 0px) + 8px) 12px 10px;
+  background: linear-gradient(rgba(10, 12, 16, 0.92), rgba(10, 12, 16, 0.8) 75%, transparent);
+  transition: opacity 0.25s, transform 0.25s;
+}
+.bar-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: calc(env(safe-area-inset-top, 0px) + 8px) 12px 10px;
-  background: linear-gradient(rgba(10, 12, 16, 0.92), rgba(10, 12, 16, 0.75) 70%, transparent);
-  transition: opacity 0.25s, transform 0.25s;
+}
+.scrub-row { margin-top: 6px; padding-bottom: 4px; }
+#page-slider {
+  width: 100%;
+  height: 28px;
+  accent-color: var(--accent);
 }
 .reader-bar.bar-hidden {
   opacity: 0;
@@ -211,8 +219,6 @@ html, body {
 /* Tracking HUD */
 .hud {
   position: absolute;
-  right: 10px;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
   z-index: 11;
   width: 148px;
   background: rgba(15, 17, 21, 0.85);
@@ -221,8 +227,46 @@ html, body {
   padding: 8px;
   backdrop-filter: blur(6px);
 }
+/* Corner positions (cycled with the move button) */
+.hud.pos-br { right: 10px; bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); top: auto; left: auto; }
+.hud.pos-tr { right: 10px; top: calc(env(safe-area-inset-top, 0px) + 64px); bottom: auto; left: auto; }
+.hud.pos-tl { left: 10px; top: calc(env(safe-area-inset-top, 0px) + 64px); bottom: auto; right: auto; }
+.hud.pos-bl { left: 10px; bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); top: auto; right: auto; }
+.hud-ctl {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.hud-ctl button {
+  width: 26px;
+  height: 22px;
+  border: none;
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+/* Minimized: just the control row + status dots, no video or progress */
+.hud.minimized { width: auto; }
+.hud.minimized .hold-progress { display: none; }
+.hud.minimized .hud-row { margin-top: 0; }
+.hud.minimized .hud-ctl { margin-bottom: 2px; }
 .cam-wrap { border-radius: 8px; overflow: hidden; }
 .cam-wrap:empty { display: none; }
+/* Collapse the preview without hiding the video from the decoder - iOS can
+   stop delivering frames from display:none videos, which kills tracking. */
+.hud.minimized .cam-wrap,
+.hud.preview-off .cam-wrap {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
 .cam-wrap video {
   width: 100%;
   display: block;

@@ -20,6 +20,15 @@ const WINK_CONFIG = {
   GRACE_MS: 120,        // tolerated dropout within a held wink (noisy frames)
 };
 
+// CLOSED_MIN / OPEN_MAX may be a single number for both eyes, or a
+// per-channel object {left, right}. Per-channel thresholds matter when the
+// camera views the face at an angle: the far eye's blendshape scores are
+// compressed (its winks peak lower, its resting score sits higher), so one
+// fixed threshold makes only the near eye's winks register.
+function channelThreshold(t, channel) {
+  return typeof t === 'number' ? t : t[channel];
+}
+
 const GAZE_CONFIG = {
   TOLERANCE: 0.45,   // max weighted distance from the calibrated baseline
   HEAD_WEIGHT: 1.6,  // head direction counts more than eyeball direction
@@ -64,10 +73,10 @@ function processWink(left, right, now, state, config, gateOk) {
     return { action: null, state: clearCandidate(state) };
   }
 
-  const leftClosed = left > config.CLOSED_MIN;
-  const rightClosed = right > config.CLOSED_MIN;
-  const leftOpen = left < config.OPEN_MAX;
-  const rightOpen = right < config.OPEN_MAX;
+  const leftClosed = left > channelThreshold(config.CLOSED_MIN, 'left');
+  const rightClosed = right > channelThreshold(config.CLOSED_MIN, 'right');
+  const leftOpen = left < channelThreshold(config.OPEN_MAX, 'left');
+  const rightOpen = right < channelThreshold(config.OPEN_MAX, 'right');
 
   let next = state;
 
@@ -137,6 +146,92 @@ function winkProgress(state, now, config) {
   return Math.min(1, (now - state.candidateStart) / config.HOLD_MS);
 }
 
+/* ============ Calibration capture ============
+
+   During calibration we cannot rely on the fixed live thresholds - at an
+   oblique camera angle the far eye may never cross them (the very problem
+   calibration is there to fix). Instead, capture judges a wink RELATIVE to
+   each eye's measured open baseline: one channel rises well above its own
+   baseline while the other stays near its own, held briefly. The peak
+   score reached feeds deriveEyeThresholds() below.
+   */
+
+const CAPTURE_CONFIG = {
+  RISE_MIN: 0.18,        // winked eye must rise this far above its baseline
+  OTHER_RISE_MAX: 0.10,  // other eye must stay this close to its baseline
+  HOLD_MS: 500,
+};
+
+function createCaptureState() {
+  return { eye: null, start: 0, peak: 0 };
+}
+
+/**
+ * Process one frame of a calibration wink capture.
+ *
+ * @param {number|null} left/right - closedness scores this frame
+ * @param {number} now - timestamp ms
+ * @param {object} state - from createCaptureState()
+ * @param {object} baseline - {left, right} open-eye baseline scores
+ * @param {object} [config] - defaults to CAPTURE_CONFIG
+ * @returns {{ captured: {eye:'left'|'right', peak:number}|null, state }}
+ */
+function processCapture(left, right, now, state, baseline, config) {
+  config = config || CAPTURE_CONFIG;
+  if (left === null || left === undefined || right === null || right === undefined) {
+    return { captured: null, state: createCaptureState() };
+  }
+
+  const riseL = left - baseline.left;
+  const riseR = right - baseline.right;
+  let eye = null;
+  if (riseL > config.RISE_MIN && riseR < config.OTHER_RISE_MAX) eye = 'left';
+  else if (riseR > config.RISE_MIN && riseL < config.OTHER_RISE_MAX) eye = 'right';
+
+  if (!eye) return { captured: null, state: createCaptureState() };
+
+  let next = state;
+  if (next.eye !== eye) {
+    next = { eye, start: now, peak: 0 };
+  }
+  next = { eye: next.eye, start: next.start, peak: Math.max(next.peak, eye === 'left' ? left : right) };
+
+  if (now - next.start >= config.HOLD_MS) {
+    return { captured: { eye: next.eye, peak: next.peak }, state: createCaptureState() };
+  }
+  return { captured: null, state: next };
+}
+
+/** Hold progress of the current capture candidate (0..1). */
+function captureProgress(state, now, config) {
+  config = config || CAPTURE_CONFIG;
+  if (state.eye === null) return 0;
+  return Math.min(1, (now - state.start) / config.HOLD_MS);
+}
+
+/**
+ * Turn measured open baselines + wink peaks into per-channel live
+ * thresholds. Each eye's "closed" bar sits a fraction of the way between
+ * its own baseline and its own wink peak, so an eye the camera sees at an
+ * angle (low peak, high baseline) gets a proportionally easier bar.
+ *
+ * @param {object} baseline - {left, right} open-eye scores
+ * @param {object} peaks - {left, right} wink peak scores
+ * @returns {{ closedMin: {left,right}, openMax: {left,right} }}
+ */
+function deriveEyeThresholds(baseline, peaks) {
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const closedMin = {};
+  const openMax = {};
+  for (const chan of ['left', 'right']) {
+    const base = baseline[chan];
+    const peak = Math.max(peaks[chan], base + 0.2); // guard degenerate capture
+    closedMin[chan] = clamp(base + (peak - base) * 0.55, 0.25, 0.75);
+    openMax[chan] = clamp(base + 0.12, 0.15, closedMin[chan] - 0.05);
+  }
+  return { closedMin, openMax };
+}
+
 /* ============ Gaze gating ============
 
    "Looking at the camera" is judged as a distance from a calibrated
@@ -200,11 +295,17 @@ const WinkExports = {
   processWink,
   createWinkState,
   winkProgress,
+  channelThreshold,
+  processCapture,
+  createCaptureState,
+  captureProgress,
+  deriveEyeThresholds,
   gazeFeatures,
   gazeDistance,
   isGazeOnTarget,
   WINK_CONFIG,
   GAZE_CONFIG,
+  CAPTURE_CONFIG,
 };
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = WinkExports;
