@@ -1,6 +1,15 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { processWink, createWinkState, winkProgress, WINK_CONFIG } = require('../page-turner/wink.js');
+const {
+  processWink,
+  createWinkState,
+  winkProgress,
+  gazeFeatures,
+  gazeDistance,
+  isGazeOnTarget,
+  WINK_CONFIG,
+  GAZE_CONFIG,
+} = require('../page-turner/wink.js');
 
 const config = WINK_CONFIG;
 const FRAME = 33; // ~30fps
@@ -256,6 +265,141 @@ describe('processWink - state handling', () => {
     const result = processWink(0.9, 0.1, 1000, state, config);
     assert.notEqual(result.state, state);
     assert.equal(result.state.candidateEye, 'left');
+  });
+});
+
+describe('processWink - gaze gate', () => {
+  // Like simulate(), but each frame carries its own gateOk flag.
+  function simulateGated(frames, t0 = 1000) {
+    let state = createWinkState();
+    const fired = [];
+    let now = t0;
+    for (const f of frames) {
+      const r = processWink(f.left, f.right, now, state, config, f.gate);
+      state = r.state;
+      if (r.action) fired.push(r.action);
+      now += FRAME;
+    }
+    return fired;
+  }
+  const gated = (frame, gate) => ({ ...frame, gate });
+
+  it('never fires when the gate stays closed', () => {
+    const fired = simulateGated([
+      ...repeat(gated(open, false), 3),
+      ...repeat(gated(winkLeft, false), framesFor(config.HOLD_MS * 3)),
+    ]);
+    assert.equal(fired.length, 0);
+  });
+
+  it('fires when the gate was open at wink start, even if it closes mid-hold', () => {
+    // Closing one eye corrupts the gaze estimate, so the gate often drops
+    // mid-wink. That must not cancel the turn.
+    const fired = simulateGated([
+      ...repeat(gated(open, true), 3),
+      gated(winkLeft, true), // candidate starts while gate open
+      ...repeat(gated(winkLeft, false), framesFor(config.HOLD_MS) + 2),
+    ]);
+    assert.deepEqual(fired, ['left']);
+  });
+
+  it('starts the hold only once the gate opens', () => {
+    const halfHold = framesFor(config.HOLD_MS / 2);
+    const fired = simulateGated([
+      ...repeat(gated(open, false), 3),
+      ...repeat(gated(winkRight, false), halfHold),      // ignored: gate closed
+      ...repeat(gated(winkRight, true), halfHold - 2),   // hold restarts here; not enough
+      ...repeat(gated(open, true), 3),
+    ]);
+    assert.equal(fired.length, 0, 'pre-gate hold time must not count');
+
+    const fired2 = simulateGated([
+      ...repeat(gated(open, false), 3),
+      ...repeat(gated(winkRight, false), halfHold),
+      ...repeat(gated(winkRight, true), framesFor(config.HOLD_MS) + 2),
+    ]);
+    assert.deepEqual(fired2, ['right']);
+  });
+
+  it('still rejects blinks while the gate is open', () => {
+    const fired = simulateGated([
+      ...repeat(gated(open, true), 3),
+      ...repeat(gated(bothClosed, true), framesFor(200)),
+      ...repeat(gated(open, true), 3),
+    ]);
+    assert.equal(fired.length, 0);
+  });
+
+  it('defaults to gate-open when the argument is omitted (back-compat)', () => {
+    const { fired } = simulate([
+      ...repeat(open, 3),
+      ...repeat(winkLeft, framesFor(config.HOLD_MS) + 2),
+    ]);
+    assert.equal(fired.length, 1);
+  });
+});
+
+describe('gazeFeatures / gazeDistance / isGazeOnTarget', () => {
+  const neutralEyes = {
+    upLeft: 0.1, upRight: 0.1, downLeft: 0.1, downRight: 0.1,
+    inLeft: 0.1, inRight: 0.1, outLeft: 0.1, outRight: 0.1,
+  };
+  // Column-major identity: forward axis (third column, indices 8..10) = (0,0,1)
+  const identityMatrix = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+
+  it('produces zero h/v for symmetric eye scores', () => {
+    const f = gazeFeatures(neutralEyes, identityMatrix);
+    assert.equal(f.h, 0);
+    assert.equal(f.v, 0);
+    assert.equal(f.nx, 0);
+    assert.equal(f.ny, 0);
+  });
+
+  it('reports downward gaze as negative v', () => {
+    const lookingDown = { ...neutralEyes, downLeft: 0.8, downRight: 0.8 };
+    const f = gazeFeatures(lookingDown, identityMatrix);
+    assert.ok(f.v < -0.5, `expected strong negative v, got ${f.v}`);
+  });
+
+  it('extracts head direction from the matrix forward axis', () => {
+    const turned = identityMatrix.slice();
+    turned[8] = 0.5; // face normal tipped sideways
+    turned[9] = -0.3;
+    const f = gazeFeatures(neutralEyes, turned);
+    assert.equal(f.nx, 0.5);
+    assert.equal(f.ny, -0.3);
+  });
+
+  it('treats a missing matrix as neutral head direction', () => {
+    const f = gazeFeatures(neutralEyes, null);
+    assert.equal(f.nx, 0);
+    assert.equal(f.ny, 0);
+  });
+
+  it('matches baseline exactly at distance 0', () => {
+    const f = { nx: 0.1, ny: -0.2, h: 0.05, v: -0.1 };
+    assert.equal(gazeDistance(f, { ...f }, GAZE_CONFIG), 0);
+    assert.ok(isGazeOnTarget(f, { ...f }, GAZE_CONFIG));
+  });
+
+  it('accepts small deviations and rejects large ones', () => {
+    const baseline = { nx: 0, ny: 0, h: 0, v: 0 };
+    const near = { nx: 0.1, ny: 0.05, h: 0.1, v: 0.1 };
+    assert.ok(isGazeOnTarget(near, baseline, GAZE_CONFIG));
+
+    // Looking down at the keyboard: head pitched down + eyes down
+    const atTheKeys = { nx: 0, ny: -0.45, h: 0, v: -0.6 };
+    assert.ok(!isGazeOnTarget(atTheKeys, baseline, GAZE_CONFIG));
+  });
+
+  it('weights head direction more than eyeball direction', () => {
+    const baseline = { nx: 0, ny: 0, h: 0, v: 0 };
+    const headOff = { nx: 0.3, ny: 0, h: 0, v: 0 };
+    const eyesOff = { nx: 0, ny: 0, h: 0.3, v: 0 };
+    assert.ok(
+      gazeDistance(headOff, baseline, GAZE_CONFIG) >
+        gazeDistance(eyesOff, baseline, GAZE_CONFIG)
+    );
   });
 });
 

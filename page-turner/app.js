@@ -11,8 +11,16 @@ const VISION_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14
 const MODEL_URL =
   'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
 
-const VERSION = 'v1';
-const { processWink, createWinkState, winkProgress, WINK_CONFIG } = window.Wink;
+const VERSION = 'v2';
+const {
+  processWink,
+  createWinkState,
+  winkProgress,
+  gazeFeatures,
+  isGazeOnTarget,
+  WINK_CONFIG,
+  GAZE_CONFIG,
+} = window.Wink;
 
 /* ============ Settings ============ */
 
@@ -25,6 +33,11 @@ const DEFAULT_SETTINGS = {
   forwardChannel: 'right',
   showPreview: true,
   calibrated: false,
+  // Require looking at the camera for a wink to register. The baseline is
+  // captured during calibration; without one, "at the camera" falls back to
+  // head-and-eyes-neutral, which roughly means facing the camera.
+  gazeGate: true,
+  gazeBaseline: null,
 };
 
 let settings = loadSettings();
@@ -408,6 +421,7 @@ async function ensureModel() {
   faceLandmarker = await FaceLandmarker.createFromOptions(fileset, {
     baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' },
     outputFaceBlendshapes: true,
+    outputFacialTransformationMatrixes: true,
     runningMode: 'VIDEO',
     numFaces: 1,
   });
@@ -431,18 +445,46 @@ function stopCamera() {
   video.srcObject = null;
 }
 
-/** Extract per-eye closedness scores from a FaceLandmarker result. */
-function eyeScores(result) {
+/** Extract eye closedness + gaze features from a FaceLandmarker result. */
+function extractFrame(result) {
   const shapes = result && result.faceBlendshapes && result.faceBlendshapes[0];
   if (!shapes) return null;
-  let left = null;
-  let right = null;
-  for (const c of shapes.categories) {
-    if (c.categoryName === 'eyeBlinkLeft') left = c.score;
-    else if (c.categoryName === 'eyeBlinkRight') right = c.score;
+  const s = {};
+  for (const c of shapes.categories) s[c.categoryName] = c.score;
+  if (s.eyeBlinkLeft === undefined || s.eyeBlinkRight === undefined) return null;
+
+  const matrixes = result.facialTransformationMatrixes;
+  const matrix = matrixes && matrixes[0] ? matrixes[0].data : null;
+  const gaze = gazeFeatures(
+    {
+      upLeft: s.eyeLookUpLeft || 0,
+      upRight: s.eyeLookUpRight || 0,
+      downLeft: s.eyeLookDownLeft || 0,
+      downRight: s.eyeLookDownRight || 0,
+      inLeft: s.eyeLookInLeft || 0,
+      inRight: s.eyeLookInRight || 0,
+      outLeft: s.eyeLookOutLeft || 0,
+      outRight: s.eyeLookOutRight || 0,
+    },
+    matrix
+  );
+  return { left: s.eyeBlinkLeft, right: s.eyeBlinkRight, gaze };
+}
+
+const NEUTRAL_BASELINE = { nx: 0, ny: 0, h: 0, v: 0 };
+let lastGazeOkTime = 0;
+
+function gazeBaseline() {
+  return settings.gazeBaseline || NEUTRAL_BASELINE;
+}
+
+/** Update the gaze gate for this frame and return whether winks may start. */
+function updateGazeGate(frame, now) {
+  if (!settings.gazeGate) return true;
+  if (frame && isGazeOnTarget(frame.gaze, gazeBaseline(), GAZE_CONFIG)) {
+    lastGazeOkTime = now;
   }
-  if (left === null || right === null) return null;
-  return { left, right };
+  return now - lastGazeOkTime < GAZE_CONFIG.RECENT_MS;
 }
 
 function trackingLoop() {
@@ -458,20 +500,21 @@ function trackingLoop() {
   } catch {
     return;
   }
-  const scores = eyeScores(result);
+  const frame = extractFrame(result);
 
   if (calibration.active) {
-    calibrationFrame(scores, now);
+    calibrationFrame(frame, now);
     return;
   }
 
-  updateHud(scores, now);
+  const gateOk = updateGazeGate(frame, now);
+  updateHud(frame, now, gateOk);
 
   if (armState !== 'armed' || !currentPdf) return;
 
-  const r = scores
-    ? processWink(scores.left, scores.right, now, winkState, winkConfig())
-    : processWink(null, null, now, winkState, winkConfig());
+  const r = frame
+    ? processWink(frame.left, frame.right, now, winkState, winkConfig(), gateOk)
+    : processWink(null, null, now, winkState, winkConfig(), gateOk);
   winkState = r.state;
 
   if (r.action) {
@@ -481,12 +524,12 @@ function trackingLoop() {
   }
 }
 
-function updateHud(scores, now) {
+function updateHud(frame, now, gateOk) {
   const fwdDot = $('eye-fwd-dot');
   const backDot = $('eye-back-dot');
   const fired = now < fireFlashUntil;
 
-  if (!scores) {
+  if (!frame) {
     setHudText(armState === 'armed' ? 'No face' : 'Paused', armState === 'armed' ? 'warn' : '');
     fwdDot.className = 'eye-dot';
     backDot.className = 'eye-dot';
@@ -494,13 +537,16 @@ function updateHud(scores, now) {
     return;
   }
 
-  const fwdScore = settings.forwardChannel === 'left' ? scores.left : scores.right;
-  const backScore = settings.forwardChannel === 'left' ? scores.right : scores.left;
+  const fwdScore = settings.forwardChannel === 'left' ? frame.left : frame.right;
+  const backScore = settings.forwardChannel === 'left' ? frame.right : frame.left;
   fwdDot.className = 'eye-dot' + (fired ? ' fired' : fwdScore > 0.55 ? ' closed' : '');
   backDot.className = 'eye-dot' + (backScore > 0.55 ? ' closed' : '');
 
   if (armState === 'armed') {
-    setHudText(fired ? 'Turn!' : 'Tracking', 'ok');
+    const holding = winkState.candidateEye !== null;
+    if (fired) setHudText('Turn!', 'ok');
+    else if (gateOk || holding) setHudText('Ready', 'ok');
+    else setHudText('Look at camera…', 'warn');
     const p = winkProgress(winkState, now, winkConfig());
     $('hold-progress-fill').style.width = `${Math.round(p * 100)}%`;
   } else {
@@ -536,6 +582,7 @@ async function startTracking() {
   hud.classList.remove('hidden');
   applyPreviewSetting();
   winkState = createWinkState();
+  lastGazeOkTime = 0;
   lastVideoTime = -1;
   if (!trackingLoopId) trackingLoop();
   return true;
@@ -593,10 +640,14 @@ function applyPreviewSetting() {
 
 const calibration = {
   active: false,
-  step: null, // 'position' | 'forward' | 'back' | 'done'
+  step: null, // 'position' | 'gaze' | 'forward' | 'back'
   faceSince: 0,
+  gazeSince: 0,
+  gazeSamples: [],
+  baseline: null,
   state: createWinkState(),
   forwardChannel: null,
+  lastGazeOk: 0,
 };
 
 const CAL_HOLD = { ...WINK_CONFIG, HOLD_MS: 500, COOLDOWN_MS: 800 };
@@ -611,8 +662,12 @@ async function startCalibration() {
   calibration.active = true;
   calibration.step = 'position';
   calibration.faceSince = 0;
+  calibration.gazeSince = 0;
+  calibration.gazeSamples = [];
+  calibration.baseline = null;
   calibration.state = createWinkState();
   calibration.forwardChannel = null;
+  calibration.lastGazeOk = 0;
 
   try {
     await ensureCamera();
@@ -629,21 +684,23 @@ async function startCalibration() {
     'Sit at the piano in your normal playing position and look at the screen.';
 }
 
-function calibrationFrame(scores, now) {
+function calibrationFrame(frame, now) {
   const cal = calibration;
   const fill = $('cal-progress-fill');
 
   if (cal.step === 'position') {
-    if (scores) {
+    if (frame) {
       if (!cal.faceSince) cal.faceSince = now;
       const held = now - cal.faceSince;
       fill.style.width = `${Math.min(100, (held / 1500) * 100)}%`;
       if (held > 1500) {
-        cal.step = 'forward';
-        cal.state = createWinkState();
+        cal.step = 'gaze';
+        cal.gazeSince = 0;
+        cal.gazeSamples = [];
         fill.style.width = '0%';
         $('cal-text').innerHTML =
-          'Wink your <strong>RIGHT</strong> eye (next-page eye) and <strong>hold it</strong> until the bar fills.';
+          'Now look <strong>directly at the camera lens</strong> and hold still. ' +
+          'This is the "turn the page" look.';
       }
     } else {
       cal.faceSince = 0;
@@ -654,10 +711,49 @@ function calibrationFrame(scores, now) {
     return;
   }
 
+  if (cal.step === 'gaze') {
+    if (!frame) {
+      cal.gazeSince = 0;
+      cal.gazeSamples = [];
+      fill.style.width = '0%';
+      return;
+    }
+    if (!cal.gazeSince) cal.gazeSince = now;
+    cal.gazeSamples.push(frame.gaze);
+    const held = now - cal.gazeSince;
+    fill.style.width = `${Math.min(100, (held / 1200) * 100)}%`;
+    if (held > 1200) {
+      const n = cal.gazeSamples.length;
+      cal.baseline = cal.gazeSamples.reduce(
+        (acc, g) => ({
+          nx: acc.nx + g.nx / n,
+          ny: acc.ny + g.ny / n,
+          h: acc.h + g.h / n,
+          v: acc.v + g.v / n,
+        }),
+        { nx: 0, ny: 0, h: 0, v: 0 }
+      );
+      cal.step = 'forward';
+      cal.state = createWinkState();
+      fill.style.width = '0%';
+      $('cal-text').innerHTML =
+        'Keep looking at the camera and wink your <strong>RIGHT</strong> eye ' +
+        '(next-page eye). <strong>Hold it</strong> until the bar fills.';
+    }
+    return;
+  }
+
   if (cal.step === 'forward' || cal.step === 'back') {
-    const r = scores
-      ? processWink(scores.left, scores.right, now, cal.state, CAL_HOLD)
-      : processWink(null, null, now, cal.state, CAL_HOLD);
+    // Practice with the same gaze gate that live tracking uses.
+    let gateOk = true;
+    if (settings.gazeGate && cal.baseline) {
+      if (frame && isGazeOnTarget(frame.gaze, cal.baseline, GAZE_CONFIG)) cal.lastGazeOk = now;
+      gateOk = now - cal.lastGazeOk < GAZE_CONFIG.RECENT_MS;
+    }
+
+    const r = frame
+      ? processWink(frame.left, frame.right, now, cal.state, CAL_HOLD, gateOk)
+      : processWink(null, null, now, cal.state, CAL_HOLD, gateOk);
     cal.state = r.state;
     fill.style.width = `${Math.round(winkProgress(cal.state, now, CAL_HOLD) * 100)}%`;
 
@@ -669,13 +765,15 @@ function calibrationFrame(scores, now) {
       cal.state = createWinkState();
       fill.style.width = '0%';
       $('cal-text').innerHTML =
-        'Got it! Now wink your <strong>LEFT</strong> eye (previous-page eye) and hold.';
+        'Got it! Still looking at the camera, wink your <strong>LEFT</strong> eye ' +
+        '(previous-page eye) and hold.';
     } else if (r.action === cal.forwardChannel) {
       $('cal-text').innerHTML =
         'That looked like the <strong>same eye</strong>. Wink the <strong>other</strong> eye and hold.';
       fill.style.width = '0%';
     } else {
       settings.forwardChannel = cal.forwardChannel;
+      settings.gazeBaseline = cal.baseline;
       settings.calibrated = true;
       saveSettings();
       finishCalibration(true);
@@ -713,8 +811,14 @@ $('settings-btn').addEventListener('click', () => {
   $('cooldown-range').value = settings.cooldownMs;
   $('cooldown-label').textContent = `${(settings.cooldownMs / 1000).toFixed(1)}s`;
   $('swap-eyes').checked = false;
+  $('gaze-gate').checked = settings.gazeGate;
   $('show-preview').checked = settings.showPreview;
   settingsDialog.showModal();
+});
+
+$('gaze-gate').addEventListener('change', (e) => {
+  settings.gazeGate = e.target.checked;
+  saveSettings();
 });
 
 $('hold-range').addEventListener('input', (e) => {

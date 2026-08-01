@@ -5,6 +5,9 @@ A PWA for iPad that displays PDF sheet music and turns pages when you **wink**
 
 - **Wink your RIGHT eye** (hold ~0.4s) → next page
 - **Wink your LEFT eye** (hold ~0.4s) → previous page
+- **Look-at-camera gate** — a wink only registers if you were looking at
+  the camera when it started, so nothing you do while reading the music or
+  watching your hands can turn a page. (Optional, on by default.)
 - **Blinks are ignored** — a blink closes both eyes together; a wink only
   counts when one eye is closed while the other stays clearly open, held
   deliberately, with a cooldown so one wink never turns two pages.
@@ -34,8 +37,10 @@ viewer work fully offline. The original PDF stays in Files as your backup.
 The first time you tap **Start tracking**, a short calibration runs:
 
 1. Sit in your normal playing position so the camera learns your posture.
-2. Wink your right eye and hold — this becomes "next page".
-3. Wink your left eye and hold — this becomes "previous page".
+2. Look directly at the camera lens — this becomes the "turn the page" look
+   that arms the wink detector.
+3. Wink your right eye and hold — this becomes "next page".
+4. Wink your left eye and hold — this becomes "previous page".
 
 Calibration also resolves camera mirroring automatically (front cameras flip
 left/right, a classic source of backwards page turns). You can recalibrate,
@@ -50,10 +55,16 @@ fires only when **all** of these hold:
 
 | Guard | Purpose |
 | --- | --- |
+| Gaze gate: head + eye direction near the calibrated "at the camera" look | rejects everything you do while reading music or watching your hands |
 | One eye closed **and** the other clearly open | rejects blinks and squints |
 | Held for `HOLD_MS` (default 400ms, adjustable) | rejects twitches and blink tails |
 | Both-eyes-closed cancels + guards for 300ms | rejects asymmetric blink onset/reopen |
 | 1.2s cooldown + both eyes must reopen | one wink = one page turn |
+
+The gaze gate only applies at the *start* of a wink — once the hold begins,
+looking away or the closed eye skewing the gaze estimate can't cancel it.
+The HUD shows "Look at camera…" vs "Ready" so you always know whether a
+wink will count.
 
 No video ever leaves the device; the camera stream is processed locally and
 nothing is uploaded.

@@ -1,5 +1,5 @@
-const CACHE_NAME = 'page-turner-v1';
-const RUNTIME_CACHE = 'page-turner-runtime-v1';
+const CACHE_NAME = 'page-turner-v2';
+const RUNTIME_CACHE = 'page-turner-runtime-v2';
 
 const ASSETS = [
   './',
