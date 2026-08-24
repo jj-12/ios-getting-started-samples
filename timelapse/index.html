@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <title>Aligned Timelapse</title>
+  <meta name="description" content="Turn years of photos into a timelapse with your face locked in place">
+  <meta name="theme-color" content="#0f1115">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Timelapse">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ============ Import ============ -->
+  <div id="import-view" class="view">
+    <header class="app-header">
+      <h1>Aligned Timelapse</h1>
+      <p class="tagline">Years of photos, your face locked in the same spot, flying past.</p>
+    </header>
+
+    <div id="dropzone" class="dropzone">
+      <div class="drop-icon">&#9634;</div>
+      <p><strong>Drop photos here</strong></p>
+      <p class="hint">or</p>
+      <div class="drop-actions">
+        <button id="choose-btn" class="btn btn-primary">Choose photos</button>
+        <button id="gphotos-btn" class="btn">Google Photos&hellip;</button>
+      </div>
+      <input type="file" id="file-input" accept="image/*" multiple hidden>
+      <p class="hint small">On iPhone/iPad, &ldquo;Choose photos&rdquo; opens your photo library &mdash;
+        including anything you saved from a Google Photos album.</p>
+    </div>
+
+    <!-- Google Photos needs your own OAuth client ID; see the README. -->
+    <div id="gphotos-panel" class="panel hidden">
+      <h2>Import from Google Photos</h2>
+      <p class="hint">Google requires each app to use its own credentials, so this
+        one uses yours. Create an OAuth <strong>Web application</strong> client ID with
+        the Photos Picker API enabled and this page&rsquo;s origin
+        (<code id="origin-label"></code>) as an authorized JavaScript origin, then paste
+        it here. It is stored only in this browser.
+        <a href="README.md#google-photos-setup" target="_blank" rel="noopener">Setup steps</a></p>
+      <label class="field">
+        <span>OAuth client ID</span>
+        <input type="text" id="client-id" placeholder="1234567890-abc.apps.googleusercontent.com"
+          autocomplete="off" autocapitalize="off" spellcheck="false">
+      </label>
+      <div class="row">
+        <button id="gphotos-start" class="btn btn-primary">Pick photos</button>
+        <button id="gphotos-close" class="btn">Cancel</button>
+      </div>
+      <p id="gphotos-status" class="status"></p>
+    </div>
+
+    <p id="import-status" class="status"></p>
+
+    <footer class="app-footer">
+      <span id="version-label">v1</span>
+      <span class="hint">Everything stays on your device &mdash; photos are never uploaded.</span>
+    </footer>
+  </div>
+
+  <!-- ============ Studio ============ -->
+  <div id="studio-view" class="view hidden">
+    <div class="stage">
+      <canvas id="stage-canvas"></canvas>
+      <div id="stage-caption" class="stage-caption"></div>
+      <div id="stage-badge" class="stage-badge hidden"></div>
+    </div>
+
+    <div class="transport">
+      <button id="play-btn" class="btn btn-round" aria-label="Play">&#9654;</button>
+      <input type="range" id="scrub" min="0" max="0" step="1" value="0" aria-label="Scrub">
+      <span id="time-label" class="time-label">0 / 0</span>
+    </div>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="framing">Framing</button>
+      <button class="tab" data-tab="timing">Timing</button>
+      <button class="tab" data-tab="output">Output</button>
+      <button class="tab" data-tab="photos">Photos</button>
+    </nav>
+
+    <section class="panel tab-panel" data-panel="framing">
+      <label class="field">
+        <span>Face size <output id="out-span"></output></span>
+        <input type="range" id="ctl-span" min="10" max="60" step="1">
+      </label>
+      <label class="field">
+        <span>Face height <output id="out-cy"></output></span>
+        <input type="range" id="ctl-cy" min="15" max="75" step="1">
+      </label>
+      <label class="field">
+        <span>Horizontal <output id="out-cx"></output></span>
+        <input type="range" id="ctl-cx" min="20" max="80" step="1">
+      </label>
+      <label class="field">
+        <span>Stabilize <output id="out-stab"></output></span>
+        <input type="range" id="ctl-stab" min="0" max="100" step="5">
+      </label>
+      <p class="hint">Stabilize smooths out detector jitter by letting each photo
+        drift a little toward its neighbours &mdash; at most 2% of the frame
+        width, so faces stay put.</p>
+      <label class="check"><input type="checkbox" id="ctl-level"> Level the eyes (rotate photos)</label>
+      <label class="field">
+        <span>Fill the frame</span>
+        <select id="ctl-coverage">
+          <option value="1">Every photo (crops most)</option>
+          <option value="0.9">Most photos</option>
+          <option value="0">Never crop (show edges)</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Background</span>
+        <select id="ctl-background">
+          <option value="blur">Blurred photo</option>
+          <option value="black">Black</option>
+          <option value="white">White</option>
+        </select>
+      </label>
+    </section>
+
+    <section class="panel tab-panel hidden" data-panel="timing">
+      <label class="field">
+        <span>Photos per second <output id="out-fps"></output></span>
+        <input type="range" id="ctl-fps" min="1" max="24" step="1">
+      </label>
+      <label class="field">
+        <span>Crossfade <output id="out-xfade"></output></span>
+        <input type="range" id="ctl-xfade" min="0" max="100" step="5">
+      </label>
+      <label class="field">
+        <span>Hold first photo <output id="out-hold-first"></output></span>
+        <input type="range" id="ctl-hold-first" min="0" max="3000" step="100">
+      </label>
+      <label class="field">
+        <span>Hold last photo <output id="out-hold-last"></output></span>
+        <input type="range" id="ctl-hold-last" min="0" max="3000" step="100">
+      </label>
+      <label class="check"><input type="checkbox" id="ctl-loop"> Loop playback</label>
+      <p id="duration-label" class="hint"></p>
+    </section>
+
+    <section class="panel tab-panel hidden" data-panel="output">
+      <label class="field">
+        <span>Shape</span>
+        <select id="ctl-aspect">
+          <option value="4:5">Portrait 4:5</option>
+          <option value="9:16">Tall 9:16</option>
+          <option value="1:1">Square</option>
+          <option value="3:2">Landscape 3:2</option>
+          <option value="16:9">Wide 16:9</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Size</span>
+        <select id="ctl-quality">
+          <option value="720">720p</option>
+          <option value="1080">1080p</option>
+          <option value="1440">1440p</option>
+        </select>
+      </label>
+      <div class="row">
+        <button id="export-video" class="btn btn-primary">Export video</button>
+        <button id="export-frames" class="btn">Export frames (.zip)</button>
+      </div>
+      <p id="export-status" class="status"></p>
+      <p class="hint">Export plays the timelapse through once while recording, so it
+        takes about as long as the video itself. Keep this tab in front.</p>
+    </section>
+
+    <section class="panel tab-panel hidden" data-panel="photos">
+      <div class="row">
+        <button id="add-more" class="btn">Add photos</button>
+        <button id="redetect" class="btn">Re-detect faces</button>
+        <button id="clear-all" class="btn btn-danger">Remove all</button>
+      </div>
+      <p id="photos-summary" class="hint"></p>
+      <div id="filmstrip" class="filmstrip"></div>
+    </section>
+
+    <div id="build-progress" class="build-progress hidden">
+      <div class="bar"><div id="build-bar" class="bar-fill"></div></div>
+      <span id="build-label"></span>
+      <button id="build-cancel" class="btn btn-small">Stop</button>
+    </div>
+  </div>
+
+  <!-- ============ Anchor editor ============ -->
+  <div id="editor-view" class="view hidden">
+    <header class="editor-header">
+      <button id="editor-back" class="btn btn-small">&#8592; Back</button>
+      <span id="editor-title"></span>
+    </header>
+    <p class="hint editor-hint">Drag the two markers onto the eyes &mdash; left eye first.
+      Tap anywhere to move the nearest one.</p>
+    <div class="editor-stage">
+      <canvas id="editor-canvas"></canvas>
+      <canvas id="loupe" class="loupe hidden" width="140" height="140"></canvas>
+    </div>
+    <div class="row editor-actions">
+      <button id="editor-next-face" class="btn btn-small">Next face</button>
+      <button id="editor-auto" class="btn btn-small">Auto-detect</button>
+      <button id="editor-skip" class="btn btn-small btn-danger">Skip photo</button>
+      <button id="editor-done" class="btn btn-primary btn-small">Done</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="align.js"></script>
+  <script src="zip.js"></script>
+  <script src="photos.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

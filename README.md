@@ -7,6 +7,10 @@ Small installable web apps hosted on GitHub Pages:
   the page while playing piano. Live at
   <https://jj-12.github.io/ios-getting-started-samples/page-turner/>
   ([details](page-turner/README.md))
+- **[Aligned Timelapse](timelapse/)** — years of photos flipped into a
+  timelapse with the same face pinned in place on every frame. Live at
+  <https://jj-12.github.io/ios-getting-started-samples/timelapse/>
+  ([details](timelapse/README.md))
 
 ---
 
