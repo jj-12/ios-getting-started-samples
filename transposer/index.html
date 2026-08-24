@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Transposer</title>
+  <meta name="description" content="Transpose sheet music to any key - MusicXML and lead-sheet PDFs">
+  <meta name="theme-color" content="#12101a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Transposer">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ============ Library view ============ -->
+  <div id="library-view" class="view">
+    <header class="lib-header">
+      <h1>Transposer</h1>
+      <button id="import-btn" class="btn btn-primary">+ Import</button>
+      <input type="file" id="file-input"
+             accept="application/pdf,.pdf,.xml,.musicxml,.mxl,application/vnd.recordare.musicxml,application/vnd.recordare.musicxml+xml"
+             multiple hidden>
+    </header>
+
+    <p class="lib-sub">Upload sheet music, pick a key, play or print it transposed.</p>
+
+    <div id="import-status" class="import-status hidden"></div>
+
+    <div id="library-grid" class="library-grid"></div>
+
+    <div id="library-empty" class="empty-state hidden">
+      <div class="empty-icon">&#119070;</div>
+      <h2>No scores yet</h2>
+      <p>Tap <strong>Import</strong> to add music:</p>
+      <p><strong>MusicXML</strong> (.musicxml, .xml, .mxl) transposes fully —
+        notes, key signature, chords — and can be played back and printed in
+        the new key.</p>
+      <p><strong>PDF</strong> lead sheets get their chord symbols transposed in
+        place. For the notes themselves, convert the PDF to MusicXML once
+        (free tools linked inside) and import that.</p>
+      <button id="demo-btn" class="btn">Try the demo score</button>
+    </div>
+
+    <footer class="lib-footer">
+      <span id="version-label">v1</span>
+      <span class="hint">Add to Home Screen for offline use &amp; safe storage</span>
+    </footer>
+  </div>
+
+  <!-- ============ MusicXML score view ============ -->
+  <div id="score-view" class="view hidden">
+    <div class="toolbar">
+      <button id="score-back" class="btn btn-ghost">&lsaquo; Library</button>
+      <div class="toolbar-title">
+        <span id="score-title"></span>
+        <span id="score-keyinfo" class="hint"></span>
+      </div>
+      <div class="toolbar-actions">
+        <button id="score-play" class="btn" title="Play">&#9654; Play</button>
+        <button id="score-print" class="btn" title="Print or save as PDF">Print</button>
+        <button id="score-download" class="btn btn-ghost" title="Download transposed MusicXML">&#8681; XML</button>
+      </div>
+    </div>
+    <div class="controls" id="score-controls">
+      <label class="ctl">
+        <span>Key</span>
+        <select id="key-select"></select>
+      </label>
+      <label class="ctl">
+        <span>Octave</span>
+        <span class="stepper">
+          <button id="oct-down" class="btn btn-mini">&minus;</button>
+          <span id="oct-label">0</span>
+          <button id="oct-up" class="btn btn-mini">+</button>
+        </span>
+      </label>
+      <button id="score-reset" class="btn btn-ghost">Original</button>
+      <span id="score-status" class="hint"></span>
+    </div>
+    <div id="sheet-scroll" class="sheet-scroll">
+      <div id="sheet" class="sheet"></div>
+    </div>
+  </div>
+
+  <!-- ============ PDF view ============ -->
+  <div id="pdf-view" class="view hidden">
+    <div class="toolbar">
+      <button id="pdf-back" class="btn btn-ghost">&lsaquo; Library</button>
+      <div class="toolbar-title"><span id="pdf-title"></span></div>
+      <div class="toolbar-actions">
+        <button id="pdf-print" class="btn" title="Print or save as PDF">Print</button>
+      </div>
+    </div>
+
+    <div id="chord-controls" class="controls hidden">
+      <span class="ctl-label" id="chord-count"></span>
+      <label class="ctl">
+        <span>Shift</span>
+        <span class="stepper">
+          <button id="shift-down" class="btn btn-mini">&minus;</button>
+          <span id="shift-label">0</span>
+          <button id="shift-up" class="btn btn-mini">+</button>
+        </span>
+      </label>
+      <label class="ctl ctl-check">
+        <input type="checkbox" id="prefer-flats"> <span>prefer &#9837;</span>
+      </label>
+      <label class="ctl ctl-check">
+        <input type="checkbox" id="highlight-chords" checked> <span>highlight</span>
+      </label>
+    </div>
+
+    <div id="pdf-notice" class="pdf-notice hidden">
+      <span id="pdf-notice-text"></span>
+      <button id="omr-help-btn" class="btn btn-mini">How?</button>
+    </div>
+
+    <div id="pdf-pages" class="pdf-pages"></div>
+  </div>
+
+  <!-- ============ OMR help modal ============ -->
+  <div id="omr-modal" class="view overlay hidden">
+    <div class="modal">
+      <h2>Transposing the printed notes</h2>
+      <p>A PDF only contains a <em>picture</em> of the notes, so this app can
+        move the <strong>chord symbols</strong> it finds in the PDF text, but
+        not redraw the notation itself. To transpose the actual notes, convert
+        the PDF to <strong>MusicXML</strong> once with a free music-OCR tool,
+        then import that file here — transposition, playback and printing all
+        work fully on MusicXML.</p>
+      <ul class="link-list">
+        <li><a href="https://audiveris.github.io/audiveris/" target="_blank" rel="noopener">Audiveris</a>
+          — free, open-source desktop app (Windows/Mac/Linux); exports .mxl.</li>
+        <li><a href="https://homr.site" target="_blank" rel="noopener">homr</a>
+          — open-source recognizer with an in-browser demo for photos/scans.</li>
+        <li><a href="https://musescore.org" target="_blank" rel="noopener">MuseScore</a>
+          — free notation app; its PDF import produces editable scores you can
+          save as MusicXML.</li>
+      </ul>
+      <p class="hint">Recognition quality varies with scan quality — expect to
+        fix a few notes in a notation editor for dense scores.</p>
+      <button id="omr-close" class="btn btn-primary">Got it</button>
+    </div>
+  </div>
+
+  <script src="transpose.js" defer></script>
+  <script src="chords.js" defer></script>
+  <script src="mxl.js" defer></script>
+  <script src="player.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@2.1.2/build/opensheetmusicdisplay.min.js" defer></script>
+  <script src="app.js" type="module"></script>
+</body>
+</html>

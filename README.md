@@ -7,6 +7,11 @@ Small installable web apps hosted on GitHub Pages:
   the page while playing piano. Live at
   <https://jj-12.github.io/ios-getting-started-samples/page-turner/>
   ([details](page-turner/README.md))
+- **[Transposer](transposer/)** — transpose sheet music to any key: full
+  transposition + playback for MusicXML, in-place chord transposition for PDF
+  lead sheets. Live at
+  <https://jj-12.github.io/ios-getting-started-samples/transposer/>
+  ([details](transposer/README.md))
 
 ---
 
