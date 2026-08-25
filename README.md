@@ -12,6 +12,10 @@ Small installable web apps hosted on GitHub Pages:
   lead sheets. Live at
   <https://jj-12.github.io/ios-getting-started-samples/transposer/>
   ([details](transposer/README.md))
+- **[Aligned Timelapse](timelapse/)** — years of photos flipped into a
+  timelapse with the same face pinned in place on every frame. Live at
+  <https://jj-12.github.io/ios-getting-started-samples/timelapse/>
+  ([details](timelapse/README.md))
 
 ---
 
