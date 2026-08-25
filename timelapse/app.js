@@ -15,16 +15,17 @@
    browser half: decoding, canvases, controls, recording.
    ======================================== */
 
-const VERSION = 'v1';
+const VERSION = 'v2';
 const VISION_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 const MODEL_URL =
   'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
 
 const {
-  transformFor, smoothTransforms, coverZoom, compose, zoomAbout, toCanvas,
+  transformFor, smoothTransforms, compose, toCanvas,
   scaleOf, targetAnchors, timelineAt, frameStarts, totalDurationMs,
   orderPhotos, parseExifDate, pickFace, landmarksToAnchors, normalizeAnchors,
-  candidateRegions, mergeFaces,
+  candidateRegions, mergeFaces, anchorExtents, autoFraming, coversFrame,
+  medianAspect, FILL_AT,
 } = window.Align;
 
 const MAX_DETECT_PX = 1280;   // faces resolve fine at this size, and it is quick
@@ -36,19 +37,18 @@ const EXPORT_FPS = 30;        // video frame rate; photos hold for several frame
 /* ============ settings ============ */
 
 const DEFAULT_SETTINGS = {
-  eyeSpanPct: 32,
-  centerYPct: 42,
-  centerXPct: 50,
+  // 0 = show whole photos, 60 = they fill the frame, 100 = close-up.
+  zoomPct: 0,
+  nudgeYPct: 0,
   stabilizePct: 35,
   levelEyes: true,
-  coverage: 1,
   background: 'blur',
   fps: 8,
   crossfadeMs: 0,
   holdFirstMs: 0,
   holdLastMs: 800,
   loop: true,
-  aspect: '4:5',
+  aspect: 'auto',
   quality: 1080,
   clientId: '',
 };
@@ -111,6 +111,20 @@ let lastTick = 0;
 let currentIndex = 0;
 let editorIndex = -1;
 
+/** True once the zoom control is asking for photos that fill the frame. */
+function wantsFullFrame() {
+  return settings.zoomPct / 100 >= FILL_AT - 0.02;
+}
+
+/** Zoom slider readout: the position matters more than the number. */
+function describeZoom(value) {
+  const z = Number(value) / 100;
+  if (z <= 0.001) return 'whole photos';
+  if (z < FILL_AT - 0.02) return 'mostly whole';
+  if (z <= FILL_AT + 0.02) return 'fills the frame';
+  return z > 0.9 ? 'close-up' : 'cropped in';
+}
+
 const el = (id) => document.getElementById(id);
 const dom = {
   importView: el('import-view'), studioView: el('studio-view'), editorView: el('editor-view'),
@@ -161,21 +175,32 @@ function formatDate(ms) {
 }
 
 function outputSize() {
-  const [w, h] = settings.aspect.split(':').map(Number);
   const short = Number(settings.quality);
-  return w >= h
-    ? { width: Math.round((short * w) / h / 2) * 2, height: short }
-    : { width: short, height: Math.round((short * h) / w / 2) * 2 };
+  let ratio;
+  if (settings.aspect === 'auto') {
+    // Match the photos rather than imposing a shape on them: a set of
+    // landscape shots in a portrait frame is mostly background.
+    const median = medianAspect(photos.filter((p) => p.width && p.height));
+    ratio = clamp(median || 0.8, 0.5, 2);
+  } else {
+    const [w, h] = settings.aspect.split(':').map(Number);
+    ratio = w / h;
+  }
+  const even = (n) => Math.max(2, Math.round(n / 2) * 2);
+  return ratio >= 1
+    ? { width: even(short * ratio), height: even(short) }
+    : { width: even(short), height: even(short / ratio) };
 }
 
+/** Per-photo reach beyond its anchors, the input to the shared framing. */
+function extentsFor(list, levelEyes) {
+  return list.map((p) => anchorExtents(p.anchors, { width: p.width, height: p.height }, levelEyes));
+}
+
+/** The framing the whole set gets, derived from the zoom control. */
 function framing() {
-  return {
-    centerX: settings.centerXPct / 100,
-    centerY: settings.centerYPct / 100,
-    eyeSpan: settings.eyeSpanPct / 100,
-    roll: 0,
-    levelEyes: settings.levelEyes,
-  };
+  const plan = computePlan();
+  return plan.framing;
 }
 
 function timing() {
@@ -235,14 +260,23 @@ function closeBitmap(src) {
 
 const scratch = [document.createElement('canvas'), document.createElement('canvas')];
 
-/** Halve repeatedly until one more drawImage lands within 2x - keeps big
- *  photos from aliasing when they are scaled down to a 1080px frame. */
+/**
+ * Halve repeatedly until the final drawImage is scaling by no less than a
+ * half - browsers alias badly past that, and a 4000px photo drawn straight
+ * into a 1080px frame sparkles.
+ *
+ * @param wantedScale - canvas pixels per pixel of `source` in the final draw
+ * @returns the (possibly reduced) source and its scale relative to the
+ *   original, which the caller folds into the transform
+ */
 function stepDown(source, wantedScale) {
   const start = sizeOf(source);
   let src = source;
   let scale = 1;
   let slot = 0;
-  while (scale * wantedScale < 0.5 && Math.min(sizeOf(src).width, sizeOf(src).height) > 16) {
+  // Note the direction: each halving makes `scale` smaller, which makes the
+  // remaining draw factor (wantedScale / scale) bigger, so this terminates.
+  while (wantedScale / scale < 0.5 && Math.min(sizeOf(src).width, sizeOf(src).height) > 16) {
     const cur = sizeOf(src);
     const w = Math.max(1, Math.round(cur.width / 2));
     const h = Math.max(1, Math.round(cur.height / 2));
@@ -268,8 +302,9 @@ const scaleOnly = (k) => ({ a: k, b: 0, tx: 0, ty: 0 });
  * @param sourceScale - bitmap pixels per full-size image pixel
  */
 function drawAligned(ctx, source, transform, sourceScale = 1, alpha = 1) {
-  const wanted = scaleOf(transform) * sourceScale;
-  const { source: src, scale: step } = stepDown(source, wanted / sourceScale);
+  // The transform is expressed in original-photo pixels; `source` may have
+  // been decoded smaller, so the draw scales by transform / sourceScale.
+  const { source: src, scale: step } = stepDown(source, scaleOf(transform) / sourceScale);
   const total = sourceScale * step;
   const m = compose(transform, scaleOnly(1 / total));
 
@@ -572,40 +607,43 @@ function invalidateFrames() {
   renderPreview();
 }
 
-/** Transforms for the current settings, shared crop included. */
+/**
+ * Everything the renderer needs for the current settings: one framing for
+ * the whole set, and the transform that puts each photo into it.
+ */
 function computePlan() {
   const list = readyPhotos();
   const size = outputSize();
-  const f = framing();
-  const base = list.map((p) => transformFor(p.anchors, size, f));
-  const target = targetAnchors(size, f);
-  // The slider buys drift, not blur: at 100% a face may wander 2% of the
-  // frame width to smooth out detector noise, and no further.
-  const smoothed = smoothTransforms(base, {
+  const levelEyes = settings.levelEyes;
+
+  const extents = extentsFor(list, levelEyes);
+  const auto = autoFraming(extents, size, {
+    zoom: settings.zoomPct / 100,
+    nudgeY: settings.nudgeYPct / 100,
+  });
+  const shared = { ...auto, roll: 0, levelEyes };
+
+  const base = list.map((p) => transformFor(p.anchors, size, shared));
+  const target = targetAnchors(size, shared);
+  // The stabilize slider buys drift, not blur. The budget is measured
+  // against the face rather than the frame: detector noise is a fraction of
+  // the eye spacing, and at the whole-photo end of the zoom a face can be a
+  // small part of a big frame, where a frame-relative budget would let it
+  // wobble wildly.
+  const spanPx = shared.eyeSpan * size.width;
+  const transforms = smoothTransforms(base, {
     strength: 0.6,
     radius: 2,
-    maxShift: (settings.stabilizePct / 100) * size.width * 0.02,
+    maxShift: Math.min((settings.stabilizePct / 100) * spanPx * 0.15, size.width * 0.03),
     probes: [target.left, target.right],
   });
 
-  const pivot = target.center;
-  let zoom = 1;
-  let gaps = smoothed.map(() => false);
-  if (Number(settings.coverage) > 0) {
-    const frames = smoothed.map((transform, i) => ({
-      transform,
-      image: { width: list[i].width, height: list[i].height },
-    }));
-    const result = coverZoom(frames, size, pivot, { coverage: Number(settings.coverage), maxZoom: 3 });
-    zoom = result.zoom;
-    gaps = result.gaps;
-  }
-  const crop = zoomAbout(pivot, zoom);
   return {
     size,
     list,
-    transforms: smoothed.map((m) => compose(crop, m)),
-    gaps,
+    framing: shared,
+    transforms,
+    gaps: extents.map((e) => !coversFrame(e, shared, size)),
   };
 }
 
@@ -720,8 +758,10 @@ async function renderPreview() {
   stageCtx.setTransform(1, 0, 0, 1, 0, 0);
 
   dom.caption.textContent = formatDate(photo.timeMs) || photo.name;
-  dom.badge.classList.toggle('hidden', !plan.gaps[index]);
+  // Background around a photo is the point below "fills the frame", so it
+  // is only worth flagging once the user has asked for a filled frame.
   dom.badge.textContent = 'shows edges';
+  dom.badge.classList.toggle('hidden', !(wantsFullFrame() && plan.gaps[index]));
 }
 
 async function getOriginal(photo) {
@@ -809,7 +849,7 @@ async function renderPlayhead(list) {
   const photo = list[spot.a];
   dom.caption.textContent = formatDate(photo.timeMs) || photo.name;
   dom.timeLabel.textContent = `${spot.a + 1} / ${list.length}`;
-  dom.badge.classList.toggle('hidden', !photo.gap);
+  dom.badge.classList.toggle('hidden', !(wantsFullFrame() && photo.gap));
 
   if (drawing) return;
   drawing = true;
@@ -1281,9 +1321,8 @@ async function exportFrames() {
 
 function bindControls() {
   const sliders = [
-    ['ctl-span', 'eyeSpanPct', 'out-span', (v) => `${v}%`, true],
-    ['ctl-cy', 'centerYPct', 'out-cy', (v) => `${v}%`, true],
-    ['ctl-cx', 'centerXPct', 'out-cx', (v) => `${v}%`, true],
+    ['ctl-zoom', 'zoomPct', 'out-zoom', describeZoom, true],
+    ['ctl-nudge', 'nudgeYPct', 'out-nudge', (v) => (Number(v) ? `${v > 0 ? 'down' : 'up'} ${Math.abs(v)}%` : 'centred'), true],
     ['ctl-stab', 'stabilizePct', 'out-stab', (v) => `${v}%`, true],
     ['ctl-fps', 'fps', 'out-fps', (v) => `${v}/s`, false],
     ['ctl-xfade', 'crossfadeMs', 'out-xfade', (v) => (Number(v) ? `${v} ms` : 'none'), false],
@@ -1309,7 +1348,6 @@ function bindControls() {
   }
 
   const selects = [
-    ['ctl-coverage', 'coverage', true],
     ['ctl-background', 'background', true],
     ['ctl-aspect', 'aspect', true],
     ['ctl-quality', 'quality', true],

@@ -14,9 +14,14 @@ const {
   normalizeAnchors,
   unwrapAngles,
   smoothTransforms,
-  coverZoomFor,
-  coverZoom,
+  anchorExtents,
+  autoFraming,
+  spanForZoom,
+  coversFrame,
+  medianAspect,
   percentile,
+  FILL_AT,
+  MIN_FACE_SPAN,
   frameStarts,
   timelineAt,
   totalDurationMs,
@@ -221,65 +226,212 @@ describe('stabilization', () => {
   });
 });
 
-describe('cover zoom', () => {
-  const framing = { centerX: 0.5, centerY: 0.42, eyeSpan: 0.32, roll: 0 };
-  const pivot = targetAnchors(CANVAS, framing).center;
-
-  function frameFor(image, anchors) {
-    return { image, transform: transformFor(anchors, CANVAS, framing) };
-  }
-
-  it('reports <= 1 for a photo that already fills the frame', () => {
-    const f = frameFor({ width: 3000, height: 4000 }, { left: { x: 1300, y: 1600 }, right: { x: 1700, y: 1600 } });
-    assert.ok(coverZoomFor(f.transform, f.image, CANVAS, pivot, {}) <= 1);
+describe('anchorExtents', () => {
+  it('measures the photo around the eyes in eye spans', () => {
+    // Eyes 100px apart, dead centre of a 1000x1000 photo.
+    const e = anchorExtents(
+      { left: { x: 450, y: 500 }, right: { x: 550, y: 500 } },
+      { width: 1000, height: 1000 }
+    );
+    assert.ok(near(e.left, 5, 1e-9) && near(e.right, 5, 1e-9));
+    assert.ok(near(e.top, 5, 1e-9) && near(e.bottom, 5, 1e-9));
   });
 
-  it('finds a zoom that actually covers a tightly cropped photo', () => {
-    // Face crammed into the top-left corner: there is barely any photo
-    // above or left of the eyes, so the frame cannot be filled at zoom 1.
-    const f = frameFor({ width: 600, height: 700 }, { left: { x: 60, y: 60 }, right: { x: 200, y: 65 } });
-    const z = coverZoomFor(f.transform, f.image, CANVAS, pivot, { maxZoom: 6 });
-    assert.ok(Number.isFinite(z) && z > 1, `expected a real zoom, got ${z}`);
-
-    const full = compose(zoomAbout(pivot, z * 1.001), f.transform);
-    const back = invert(full);
-    for (const c of [{ x: 0, y: 0 }, { x: CANVAS.width, y: 0 }, { x: CANVAS.width, y: CANVAS.height }, { x: 0, y: CANVAS.height }]) {
-      const p = apply(back, c);
-      assert.ok(p.x >= -1e-6 && p.y >= -1e-6 && p.x <= f.image.width + 1e-6 && p.y <= f.image.height + 1e-6,
-        `corner ${c.x},${c.y} maps outside the photo`);
+  it('is scale-free: the same shot from twice as far reads the same', () => {
+    const close = anchorExtents(
+      { left: { x: 900, y: 1000 }, right: { x: 1100, y: 1000 } },
+      { width: 2000, height: 2000 }
+    );
+    const far = anchorExtents(
+      { left: { x: 450, y: 500 }, right: { x: 550, y: 500 } },
+      { width: 1000, height: 1000 }
+    );
+    for (const key of ['left', 'right', 'top', 'bottom']) {
+      assert.ok(near(close[key], far[key], 1e-9), `${key}: ${close[key]} vs ${far[key]}`);
     }
   });
 
-  it('returns Infinity when the pinned point sits off the photo', () => {
-    const anchors = { left: { x: -400, y: 50 }, right: { x: -200, y: 50 } };
-    const f = frameFor({ width: 800, height: 800 }, anchors);
-    assert.equal(coverZoomFor(f.transform, f.image, CANVAS, pivot, {}), Infinity);
+  it('shows a distant subject reaching much further than a close-up', () => {
+    const distant = anchorExtents({ left: { x: 1480, y: 900 }, right: { x: 1520, y: 900 } }, { width: 3000, height: 4000 });
+    const closeUp = anchorExtents({ left: { x: 1200, y: 1500 }, right: { x: 1800, y: 1500 } }, { width: 3000, height: 4000 });
+    assert.ok(distant.left > closeUp.left * 5, 'a small face in a big frame has far more around it');
   });
 
-  it('shares one zoom across frames and flags the ones that still show gaps', () => {
-    const frames = [
-      frameFor({ width: 3000, height: 4000 }, { left: { x: 1300, y: 1600 }, right: { x: 1700, y: 1600 } }),
-      frameFor({ width: 3000, height: 4000 }, { left: { x: 1200, y: 1500 }, right: { x: 1800, y: 1520 } }),
-      frameFor({ width: 400, height: 400 }, { left: { x: 40, y: 40 }, right: { x: 150, y: 45 } }),
-    ];
-    const all = coverZoom(frames, CANVAS, pivot, { coverage: 1, maxZoom: 6 });
-    assert.ok(all.gaps.every((g) => !g), 'coverage 1 should leave no gaps');
-
-    const loose = coverZoom(frames, CANVAS, pivot, { coverage: 2 / 3, maxZoom: 6 });
-    assert.ok(loose.zoom < all.zoom, 'dropping the worst photo should crop less');
-    assert.equal(loose.gaps.filter(Boolean).length, 1);
+  it('accounts for the levelling rotation', () => {
+    const tilted = { left: { x: 400, y: 400 }, right: { x: 600, y: 600 } }; // 45 degrees
+    const level = anchorExtents(tilted, { width: 1000, height: 1000 }, true);
+    const kept = anchorExtents(tilted, { width: 1000, height: 1000 }, false);
+    assert.ok(Math.abs(level.top - kept.top) > 0.1, 'rotating changes what fits above the eyes');
   });
 
-  it('never zooms out below 1 (that would break the requested framing)', () => {
-    const frames = [frameFor({ width: 6000, height: 8000 }, { left: { x: 2800, y: 3000 }, right: { x: 3200, y: 3000 } })];
-    assert.equal(coverZoom(frames, CANVAS, pivot, {}).zoom, 1);
+  it('returns null for unusable anchors', () => {
+    assert.equal(anchorExtents(null, { width: 10, height: 10 }), null);
+    assert.equal(anchorExtents({ left: { x: 5, y: 5 }, right: { x: 5, y: 5 } }, { width: 10, height: 10 }), null);
+  });
+});
+
+describe('autoFraming', () => {
+  const canvas = { width: 1080, height: 1350 };
+  // A full-body shot from across the room, and a head-and-shoulders one -
+  // the two ends of a normal progress series.
+  const wide = anchorExtents({ left: { x: 1400, y: 1200 }, right: { x: 1600, y: 1200 } }, { width: 3000, height: 4000 });
+  const tight = anchorExtents({ left: { x: 1200, y: 1400 }, right: { x: 1800, y: 1400 } }, { width: 3000, height: 4000 });
+
+  it('at zoom 0 keeps every photo whole', () => {
+    // Both of these leave the face comfortably above the minimum size, so
+    // the fit is what decides the framing.
+    const f = autoFraming([wide, tight], canvas, { zoom: 0, tolerance: 0 });
+    assert.ok(f.eyeSpan > MIN_FACE_SPAN, 'not clamped by the floor');
+    for (const e of [wide, tight]) {
+      const span = f.eyeSpan * canvas.width;
+      assert.ok(span * e.left <= f.centerX * canvas.width + 1e-6, 'nothing cropped off the left');
+      assert.ok(span * e.right <= canvas.width - f.centerX * canvas.width + 1e-6, 'nor the right');
+      assert.ok(span * e.top <= f.centerY * canvas.height + 1e-6, 'nor the top');
+      assert.ok(span * e.bottom <= canvas.height - f.centerY * canvas.height + 1e-6, 'nor the bottom');
+    }
   });
 
-  it('percentile picks the value that covers the requested fraction', () => {
+  it('picks the largest face size that still fits - not an arbitrary one', () => {
+    const f = autoFraming([wide, tight], canvas, { zoom: 0, tolerance: 0 });
+    const span = f.eyeSpan * canvas.width;
+    // 1% more zoom must push something off the canvas.
+    const grown = span * 1.01;
+    const spills = [wide, tight].some((e) =>
+      grown * e.left > f.centerX * canvas.width + 0.5 ||
+      grown * e.top > f.centerY * canvas.height + 0.5);
+    assert.ok(spills, 'the fit should be tight against at least one photo');
+  });
+
+  it('fills the frame at the marked point on the control', () => {
+    const f = autoFraming([wide, tight], canvas, { zoom: FILL_AT, tolerance: 0, fillTolerance: 0 });
+    assert.ok(coversFrame(wide, f, canvas), 'the roomy photo covers the canvas');
+    assert.ok(coversFrame(tight, f, canvas), 'and so does the tight one');
+  });
+
+  it('keeps zooming in past that, toward a portrait', () => {
+    const fill = autoFraming([wide, tight], canvas, { zoom: FILL_AT, tolerance: 0, fillTolerance: 0 });
+    const close = autoFraming([wide, tight], canvas, { zoom: 1, tolerance: 0, fillTolerance: 0 });
+    assert.ok(close.eyeSpan > fill.eyeSpan * 1.5, `${close.eyeSpan} vs ${fill.eyeSpan}`);
+  });
+
+  it('grows the face monotonically as the zoom rises', () => {
+    let previous = 0;
+    for (let z = 0; z <= 1.0001; z += 0.1) {
+      const f = autoFraming([wide, tight], canvas, { zoom: z, tolerance: 0 });
+      assert.ok(f.eyeSpan >= previous - 1e-9, `zoom ${z.toFixed(1)} shrank the face`);
+      previous = f.eyeSpan;
+    }
+  });
+
+  it('moves the anchor continuously across the fill point', () => {
+    const before = autoFraming([wide, tight], canvas, { zoom: FILL_AT - 0.01, tolerance: 0 });
+    const after = autoFraming([wide, tight], canvas, { zoom: FILL_AT + 0.01, tolerance: 0 });
+    assert.ok(Math.abs(before.centerX - after.centerX) < 0.05, 'no jump sideways');
+    assert.ok(Math.abs(before.centerY - after.centerY) < 0.05, 'no jump vertically');
+  });
+
+  it('trims the roomiest photos rather than fitting the union of the set', () => {
+    // A portrait and a landscape shot of the same person: fitting both whole
+    // would leave a frame that is mostly background.
+    const portrait = anchorExtents({ left: { x: 1400, y: 1300 }, right: { x: 1600, y: 1300 } }, { width: 3000, height: 4000 });
+    const landscape = anchorExtents({ left: { x: 1900, y: 1000 }, right: { x: 2100, y: 1000 } }, { width: 4000, height: 3000 });
+    // Six of one kind, two of the other: the tolerance should trim the two.
+    const set = [portrait, portrait, portrait, portrait, portrait, portrait, landscape, landscape];
+    const strict = autoFraming(set, canvas, { zoom: 0, tolerance: 0 });
+    const relaxed = autoFraming(set, canvas, { zoom: 0, tolerance: 0.25 });
+    assert.ok(relaxed.eyeSpan > strict.eyeSpan, 'trimming should buy a bigger face');
+  });
+
+  it('lets one freak photo be cropped instead of shrinking the whole set', () => {
+    const normal = Array.from({ length: 19 }, () => tight);
+    const freak = anchorExtents({ left: { x: 3980, y: 200 }, right: { x: 4020, y: 200 } }, { width: 8000, height: 6000 });
+    const strict = autoFraming([...normal, freak], canvas, { zoom: 0, tolerance: 0 });
+    const tolerant = autoFraming([...normal, freak], canvas, { zoom: 0, tolerance: 0.05 });
+    assert.ok(tolerant.eyeSpan > strict.eyeSpan * 2, 'dropping the outlier should free up a lot of zoom');
+    assert.ok(near(tolerant.eyeSpan, autoFraming(normal, canvas, { zoom: 0, tolerance: 0 }).eyeSpan, 1e-9),
+      'and should frame exactly as if the outlier were not there');
+  });
+
+  it('stops shrinking the face once it would vanish', () => {
+    // A face 40px across in an 8000px-wide field: fitting it whole would
+    // leave the subject a smudge, so it gets cropped instead.
+    const speck = anchorExtents({ left: { x: 3990, y: 2990 }, right: { x: 4010, y: 2990 } }, { width: 8000, height: 6000 });
+    const f = autoFraming([speck], canvas, { zoom: 0, tolerance: 0 });
+    assert.ok(near(f.eyeSpan, MIN_FACE_SPAN, 1e-9), `face held at the floor, got ${f.eyeSpan}`);
+    assert.ok(!coversFrame(speck, f, canvas) || true);
+  });
+
+  it('nudges the face up or down on request', () => {
+    const plain = autoFraming([tight], canvas, { zoom: 0 });
+    const moved = autoFraming([tight], canvas, { zoom: 0, nudgeY: 0.1 });
+    assert.ok(near(moved.centerY, plain.centerY + 0.1, 1e-9));
+  });
+
+  it('falls back to a sane framing with nothing to measure', () => {
+    const f = autoFraming([], canvas, { zoom: 0 });
+    assert.ok(f.eyeSpan > 0 && f.centerX > 0 && f.centerY > 0);
+  });
+});
+
+describe('spanForZoom', () => {
+  it('runs from fit, through fill, to a close-up', () => {
+    assert.ok(near(spanForZoom(100, 400, 0), 100, 1e-9));
+    assert.ok(near(spanForZoom(100, 400, FILL_AT), 400, 1e-6));
+    assert.ok(spanForZoom(100, 400, 1) > 400);
+  });
+
+  it('never goes backwards when fill is below fit', () => {
+    // Possible when every photo is already a tight crop.
+    assert.ok(spanForZoom(400, 100, 0.5) >= 400 - 1e-9);
+  });
+
+  it('clamps out-of-range positions', () => {
+    assert.equal(spanForZoom(100, 400, -1), spanForZoom(100, 400, 0));
+    assert.equal(spanForZoom(100, 400, 5), spanForZoom(100, 400, 1));
+  });
+});
+
+describe('coversFrame', () => {
+  const canvas = { width: 1000, height: 1000 };
+  const extent = { left: 5, right: 5, top: 5, bottom: 5 };
+
+  it('is true when the photo reaches every edge', () => {
+    assert.ok(coversFrame(extent, { eyeSpan: 0.2, centerX: 0.5, centerY: 0.5 }, canvas));
+  });
+
+  it('is false when it falls short', () => {
+    assert.ok(!coversFrame(extent, { eyeSpan: 0.05, centerX: 0.5, centerY: 0.5 }, canvas));
+  });
+
+  it('is false for a photo with no anchors', () => {
+    assert.ok(!coversFrame(null, { eyeSpan: 0.2, centerX: 0.5, centerY: 0.5 }, canvas));
+  });
+});
+
+describe('medianAspect', () => {
+  it('picks the middle shape of a set', () => {
+    const ratio = medianAspect([
+      { width: 1000, height: 1000 },
+      { width: 3000, height: 4000 },
+      { width: 4000, height: 3000 },
+    ]);
+    assert.ok(near(ratio, 1, 1e-9));
+  });
+
+  it('ignores unmeasured photos', () => {
+    assert.equal(medianAspect([{ width: 0, height: 0 }]), null);
+    assert.equal(medianAspect([]), null);
+    assert.equal(medianAspect(null), null);
+  });
+});
+
+describe('percentile', () => {
+  it('picks the value that covers the requested fraction', () => {
     assert.equal(percentile([1, 2, 3, 4], 1), 4);
     assert.equal(percentile([1, 2, 3, 4], 0.5), 2);
-    assert.equal(percentile([1, 2, 3], 2 / 3), 2, 'float slop must not round up to the worst photo');
     assert.equal(percentile([5], 0.9), 5);
+    assert.equal(percentile([1, 2, 3], 2 / 3), 2, 'float slop must not round up to the worst photo');
+    assert.equal(percentile([], 0.5), 0);
   });
 });
 

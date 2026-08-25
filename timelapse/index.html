@@ -89,16 +89,15 @@
 
     <section class="panel tab-panel" data-panel="framing">
       <label class="field">
-        <span>Face size <output id="out-span"></output></span>
-        <input type="range" id="ctl-span" min="10" max="60" step="1">
+        <span>Zoom <output id="out-zoom"></output></span>
+        <input type="range" id="ctl-zoom" min="0" max="100" step="1">
       </label>
+      <p class="hint">At the left the whole of every photo stays in shot &mdash;
+        body, room and all &mdash; with the face locked in place. Around 60 the
+        photos fill the frame; past that it crops in toward a portrait.</p>
       <label class="field">
-        <span>Face height <output id="out-cy"></output></span>
-        <input type="range" id="ctl-cy" min="15" max="75" step="1">
-      </label>
-      <label class="field">
-        <span>Horizontal <output id="out-cx"></output></span>
-        <input type="range" id="ctl-cx" min="20" max="80" step="1">
+        <span>Move up / down <output id="out-nudge"></output></span>
+        <input type="range" id="ctl-nudge" min="-15" max="15" step="1">
       </label>
       <label class="field">
         <span>Stabilize <output id="out-stab"></output></span>
@@ -108,14 +107,6 @@
         drift a little toward its neighbours &mdash; at most 2% of the frame
         width, so faces stay put.</p>
       <label class="check"><input type="checkbox" id="ctl-level"> Level the eyes (rotate photos)</label>
-      <label class="field">
-        <span>Fill the frame</span>
-        <select id="ctl-coverage">
-          <option value="1">Every photo (crops most)</option>
-          <option value="0.9">Most photos</option>
-          <option value="0">Never crop (show edges)</option>
-        </select>
-      </label>
       <label class="field">
         <span>Background</span>
         <select id="ctl-background">
@@ -151,6 +142,7 @@
       <label class="field">
         <span>Shape</span>
         <select id="ctl-aspect">
+          <option value="auto">Match my photos</option>
           <option value="4:5">Portrait 4:5</option>
           <option value="9:16">Tall 9:16</option>
           <option value="1:1">Square</option>

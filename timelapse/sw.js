@@ -1,5 +1,5 @@
-const CACHE_NAME = 'timelapse-v1';
-const RUNTIME_CACHE = 'timelapse-runtime-v1';
+const CACHE_NAME = 'timelapse-v2';
+const RUNTIME_CACHE = 'timelapse-runtime-v2';
 
 const ASSETS = [
   './',

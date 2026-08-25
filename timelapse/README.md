@@ -4,6 +4,11 @@ Point it at years of photos of the same person and it flips through them with
 their **eyes pinned to the same two points** on every frame. Backgrounds,
 haircuts and decades fly past; the face stays put.
 
+By default it shows the **whole of every photo** — body, room and all — at the
+largest face size the set allows, because a timelapse of just a head loses the
+thing you were photographing progress for. Turn the zoom up if you want it
+cropped to the face.
+
 Live at
 <https://jj-12.github.io/ios-getting-started-samples/timelapse/> —
 open it on a phone and **Share → Add to Home Screen** to install it.
@@ -22,8 +27,8 @@ encoding all happen in the browser; there is no server to upload to.
 3. **Faces are found automatically.** Any photo the detector misses is flagged
    in the *Photos* tab: tap it and drag the two markers onto the eyes. A
    magnifier follows your finger so you can place them precisely.
-4. **Frame it** — face size, height and position on the canvas, output shape
-   and resolution.
+4. **Frame it** — one *Zoom* control from whole photos to a close-up, plus
+   output shape and resolution.
 5. **Press play**, then **Export video** (or *Export frames* for a `.zip` of
    aligned JPEGs to drop into a video editor).
 
@@ -31,12 +36,12 @@ encoding all happen in the browser; there is no server to upload to.
 
 | Control | What it does |
 | --- | --- |
-| **Face size** | How much of the frame width the eyes span. Bigger = tighter crop. |
-| **Face height / Horizontal** | Where the face sits on the canvas. |
-| **Stabilize** | Detector output is a pixel or two noisy, which shimmers at 8 photos/second. This lets each photo drift toward its neighbours to cancel that — capped at 2% of the frame width, so faces never wander off their mark. |
+| **Zoom** | The whole framing in one slider. At 0 you see essentially all of every photo, at the biggest face size that allows. Around 60 the photos fill the frame. Past that it keeps cropping toward a portrait. |
+| **Move up / down** | Nudges the face off the automatic position. |
+| **Stabilize** | Detector output is a pixel or two noisy, which shimmers at 8 photos/second. This lets each photo drift toward its neighbours to cancel that — capped at 15% of the eye spacing at the far end of the slider, so faces never wander off their mark. |
 | **Level the eyes** | On: photos are rotated so the eye line is horizontal. Off: each photo keeps its own tilt and is only moved and resized. |
-| **Fill the frame** | Aligning photos taken at different distances means some do not cover the whole canvas. This crops in — by the same amount on every frame, so alignment survives — until they do. *Most photos* tolerates edges on the worst few instead of cropping everyone tightly. |
 | **Photos per second** | 8 is a good "flip book" speed; 2–4 reads more like a slideshow. |
+| **Shape** | *Match my photos* picks the output shape from the set, so a landscape series does not end up in a portrait frame surrounded by background. |
 | **Crossfade** | Blends between photos. Leave it at *none* for the snappy flip-book look. |
 
 ## How the alignment works
@@ -44,10 +49,26 @@ encoding all happen in the browser; there is no server to upload to.
 Each photo gives two anchor points — the eyes. Fitting a **similarity
 transform** (move, rotate, uniform scale — no distortion) that carries those
 two points onto the same canvas targets is what locks the face in place.
+
+Because the eyes are pinned, every photo is scaled until the face is the same
+size — so how much of each photo survives is decided by the set, not per photo.
+The app measures each photo in *eye spans*: how far it reaches left, right,
+above and below the eyes, a unit that means the same thing whether the shot was
+taken from two feet away or across a garden. The roomiest photos then set the
+largest face size at which everything still fits whole, and the tightest set
+what it would take to fill the frame; the Zoom slider moves between those two,
+with the anchor sliding from "leftover space split evenly" to the usual
+portrait placement. Insisting that *every* photo fit whole would mean fitting the union of the
+set, and a series mixing portrait and landscape shots would leave the frame
+mostly background — so the roomiest quarter have their outer edges trimmed,
+which keeps around 90% of each photo while using far more of the frame. There
+is also a floor below which faces are never shrunk, set low enough that
+ordinary full-body shots are unaffected.
 `align.js` holds that geometry, with no DOM or canvas in sight, and
 [`test/align.test.js`](../test/align.test.js) checks it: transforms land the
 anchors on target to within a millionth of a pixel, stabilization respects its
-drift budget, the shared crop really does cover the frame, EXIF dates parse in
+drift budget, the automatic framing really does keep whole photos on the
+canvas, the shared crop really does cover the frame, EXIF dates parse in
 both byte orders.
 
 Faces come from **MediaPipe Face Landmarker**, running on-device via WASM. It

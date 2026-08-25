@@ -3,7 +3,9 @@
 
    The app pins two anchor points (normally the two eyes) of every photo
    to the same place on the output canvas, so a subject photographed over
-   years stays rock-steady while everything else changes around them.
+   years stays rock-steady while everything else changes around them - and
+   by default it picks the framing that keeps the *whole* photo in shot, so
+   the body and the room come along with the face.
 
    Everything in here is pure: no DOM, no canvas, no network. The browser
    side (app.js) supplies anchors - from MediaPipe face landmarks or from
@@ -280,47 +282,47 @@ function anchorDrift(exact, candidate, probes) {
   return worst;
 }
 
-/* ============ filling the frame ============ */
+/* ============ how much of each photo to show ============ */
 
 /**
- * Smallest zoom (about `pivot`, in canvas space) that makes this photo
- * cover the whole canvas. Values <= 1 mean it already covers. Returns
- * Infinity when even maxZoom leaves a gap.
+ * How far the photo reaches beyond its own anchor point, measured in eye
+ * spans: left/right/top/bottom of the aligned photo relative to the eye
+ * midpoint, after any levelling rotation.
+ *
+ * Eye spans are the unit that matters here. Two photos of the same person
+ * taken from different distances have wildly different pixel dimensions,
+ * but if one leaves three eye spans of room above the eyes and the other
+ * leaves five, that difference survives alignment - and it is exactly what
+ * decides how much of each photo can fit on the canvas.
  */
-function coverZoomFor(transform, image, canvas, pivot, options) {
-  const { maxZoom = 4, iterations = 34 } = options || {};
-  const inv = invert(transform);
-  const corners = [
+function anchorExtents(anchors, image, levelEyes = true) {
+  const a = normalizeAnchors(anchors);
+  if (!a) return null;
+  const dx = a.right.x - a.left.x;
+  const dy = a.right.y - a.left.y;
+  const span = Math.hypot(dx, dy);
+  if (!(span > 0)) return null;
+
+  const mid = { x: (a.left.x + a.right.x) / 2, y: (a.left.y + a.right.y) / 2 };
+  const theta = levelEyes ? -Math.atan2(dy, dx) : 0;
+  const cos = Math.cos(theta);
+  const sin = Math.sin(theta);
+
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const corner of [
     { x: 0, y: 0 },
-    { x: canvas.width, y: 0 },
-    { x: canvas.width, y: canvas.height },
-    { x: 0, y: canvas.height },
-  ];
-
-  const covers = (z) => {
-    const back = invert(compose(zoomAbout(pivot, z), transform));
-    for (const c of corners) {
-      const p = apply(back, c);
-      if (p.x < 0 || p.y < 0 || p.x > image.width || p.y > image.height) return false;
-    }
-    return true;
-  };
-
-  // The sampled region shrinks toward inv(pivot) as z grows, so coverage is
-  // monotonic in z and a bisection finds the threshold.
-  const anchor = apply(inv, pivot);
-  if (anchor.x <= 0 || anchor.y <= 0 || anchor.x >= image.width || anchor.y >= image.height) {
-    return Infinity; // the pinned point is off the photo - no zoom can help
+    { x: image.width, y: 0 },
+    { x: image.width, y: image.height },
+    { x: 0, y: image.height },
+  ]) {
+    const ux = corner.x - mid.x;
+    const uy = corner.y - mid.y;
+    const x = (ux * cos - uy * sin) / span;
+    const y = (ux * sin + uy * cos) / span;
+    minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+    minY = Math.min(minY, y); maxY = Math.max(maxY, y);
   }
-  if (covers(0.05)) return 0.05;
-  if (!covers(maxZoom)) return Infinity;
-
-  let lo = 0.05, hi = maxZoom;
-  for (let i = 0; i < iterations; i++) {
-    const mid = (lo + hi) / 2;
-    if (covers(mid)) hi = mid; else lo = mid;
-  }
-  return hi;
+  return { left: -minX, right: maxX, top: -minY, bottom: maxY };
 }
 
 function percentile(values, p) {
@@ -331,27 +333,142 @@ function percentile(values, p) {
   return sorted[idx];
 }
 
+// Where "the photos fill the frame" sits on the zoom control. Below it the
+// timelapse shows whole photos with background around them; above it, it
+// keeps cropping in toward a portrait.
+const FILL_AT = 0.6;
+const CLOSE_UP = 1.8; // how far past filling the frame the control can go
+
+// However wide the widest photo is, there is a point below which the face
+// stops being the subject of anything. This is deliberately low - a normal
+// full-body photo sits around 0.06, and cropping those is the opposite of
+// what the whole-photo default is for - so it only catches the pathological
+// case of someone standing at the far end of a field.
+const MIN_FACE_SPAN = 0.04; // eye spacing as a fraction of canvas width
+
+// Once photos are being cropped, the anchor goes where portraits have
+// always put eyes: centred, a little above the middle.
+const CROPPED_ANCHOR = { x: 0.5, y: 0.42 };
+
+/** Eye span at which this photo would cover a canvas anchored at `at`. */
+function spanToCover(extent, canvas, at) {
+  return Math.max(
+    (at.x * canvas.width) / extent.left,
+    ((1 - at.x) * canvas.width) / extent.right,
+    (at.y * canvas.height) / extent.top,
+    ((1 - at.y) * canvas.height) / extent.bottom
+  );
+}
+
+/** Eye span, in canvas pixels, for a zoom position between fit and close-up. */
+function spanForZoom(fitSpan, fillSpan, zoom) {
+  const z = Math.min(1, Math.max(0, zoom));
+  const fill = Math.max(fillSpan, fitSpan);
+  if (z <= FILL_AT) return fitSpan * Math.pow(fill / fitSpan, z / FILL_AT);
+  return fill * Math.pow(CLOSE_UP, (z - FILL_AT) / (1 - FILL_AT));
+}
+
 /**
- * One zoom shared by every frame. Applying the *same* extra similarity to
- * all frames keeps them aligned with each other, so we can crop in until
- * (nearly) every photo fills the frame without breaking the alignment.
+ * Choose one framing for a whole set of photos.
  *
- * `coverage` is the fraction of photos that must fill the frame: 1 crops
- * for the worst photo, 0.9 lets the tightest 10% show background edges
- * rather than zooming everyone's face in to accommodate them.
+ * Pinning the eyes scales every photo until the face is the same size, so
+ * the framing cannot be chosen per photo - one number has to suit the set.
+ * At zoom 0 that number is the largest face size at which the photos still
+ * fit on the canvas whole, which is the point of a progress timelapse: the
+ * body, the room and the years around it stay in shot. Turning the zoom up
+ * crops in, first until the photos fill the frame, then toward a portrait.
+ *
+ * One exception to "fit everything": faces never shrink past
+ * MIN_FACE_SPAN. A single shot from the far end of a field would otherwise
+ * reduce the subject of every other frame to a smudge.
+ *
+ * The anchor lands where the leftover space divides evenly, so photos sit
+ * centred rather than shoved against an edge, and it moves continuously as
+ * the zoom changes.
+ *
+ * `tolerance` is the fraction of photos allowed to break the rule at each
+ * end. It is not just outlier protection: insisting that literally every
+ * photo fit whole means fitting the *union* of the set, and a series that
+ * mixes portrait and landscape then leaves the frame mostly background.
+ * Trimming the outer edges of the roomiest quarter keeps ~90% of each photo
+ * while using far more of the frame. The fill end is stricter
+ * (`fillTolerance`), because being strict there only costs a little extra
+ * crop, and a control labelled "fills the frame" should mean it.
+ *
+ * @param {Array<{left,right,top,bottom}>} extents - from anchorExtents()
+ * @param {{width:number,height:number}} canvas
+ * @returns {{eyeSpan:number, centerX:number, centerY:number, fitSpan:number, fillSpan:number}}
+ *   fractions of the canvas, ready to hand to targetAnchors()/transformFor()
  */
-function coverZoom(frames, canvas, pivot, options) {
-  const { coverage = 1, maxZoom = 3 } = options || {};
-  const needed = frames.map((f) => coverZoomFor(f.transform, f.image, canvas, pivot, { maxZoom }));
-  const finite = needed.filter((z) => Number.isFinite(z));
-  const wanted = finite.length ? percentile(finite, coverage) : 1;
-  const zoom = Math.min(maxZoom, Math.max(1, wanted));
-  return {
-    zoom,
-    needed,
-    // Frames that still show background at the chosen zoom.
-    gaps: needed.map((z) => !(z <= zoom)),
+function autoFraming(extents, canvas, options) {
+  const { zoom = 0, tolerance = 0.25, fillTolerance = 0.1, nudgeY = 0 } = options || {};
+  const usable = extents.filter(Boolean);
+  if (!usable.length) {
+    return { eyeSpan: DEFAULT_FRAMING.eyeSpan, centerX: 0.5, centerY: 0.42, fitSpan: 0, fillSpan: 0 };
+  }
+
+  const at = (key, p) => percentile(usable.map((e) => e[key]), p);
+  // The roomiest photos decide what fits...
+  const hi = {
+    left: at('left', 1 - tolerance), right: at('right', 1 - tolerance),
+    top: at('top', 1 - tolerance), bottom: at('bottom', 1 - tolerance),
   };
+  const fitSpan = Math.max(
+    Math.min(canvas.width / (hi.left + hi.right), canvas.height / (hi.top + hi.bottom)),
+    MIN_FACE_SPAN * canvas.width
+  );
+
+  // ...and the tightest decide what it takes to fill the frame, measured
+  // against the anchor a cropped frame actually uses.
+  const fillSpan = percentile(
+    usable.map((e) => spanToCover(e, canvas, CROPPED_ANCHOR)),
+    1 - fillTolerance
+  );
+
+  const span = spanForZoom(fitSpan, fillSpan, zoom);
+
+  // At zoom 0 the anchor goes where the leftover space divides evenly, so
+  // the photos sit centred. As the zoom rises it slides to the anchor a
+  // cropped frame uses, arriving exactly at the fill point - which is the
+  // placement fillSpan was measured against.
+  const fitSlackX = canvas.width - fitSpan * (hi.left + hi.right);
+  const fitSlackY = canvas.height - fitSpan * (hi.top + hi.bottom);
+  const fitX = (fitSpan * hi.left + fitSlackX / 2) / canvas.width;
+  const fitY = (fitSpan * hi.top + fitSlackY / 2) / canvas.height;
+  const t = Math.min(1, Math.max(0, zoom / FILL_AT));
+  const centerX = fitX + t * (CROPPED_ANCHOR.x - fitX);
+  const centerY = fitY + t * (CROPPED_ANCHOR.y - fitY) + nudgeY;
+
+  return {
+    eyeSpan: span / canvas.width,
+    centerX: Math.min(0.95, Math.max(0.05, centerX)),
+    centerY: Math.min(0.95, Math.max(0.05, centerY)),
+    fitSpan,
+    fillSpan,
+  };
+}
+
+/** Does this photo reach every edge of the canvas, or will background show? */
+function coversFrame(extent, framing, canvas) {
+  if (!extent) return false;
+  const span = framing.eyeSpan * canvas.width;
+  const x = framing.centerX * canvas.width;
+  const y = framing.centerY * canvas.height;
+  return (
+    span * extent.left >= x - 0.5 &&
+    span * extent.right >= canvas.width - x - 0.5 &&
+    span * extent.top >= y - 0.5 &&
+    span * extent.bottom >= canvas.height - y - 0.5
+  );
+}
+
+/** The shape that suits a set of photos, for "match my photos" output. */
+function medianAspect(sizes) {
+  const ratios = (sizes || [])
+    .filter((s) => s && s.width > 0 && s.height > 0)
+    .map((s) => s.width / s.height);
+  if (!ratios.length) return null;
+  return percentile(ratios, 0.5);
 }
 
 /* ============ playback timeline ============ */
@@ -688,11 +805,12 @@ const Align = {
   decompose, recompose, toCanvas, zoomAbout, fitSimilarity,
   normalizeAnchors, targetAnchors, transformFor,
   unwrapAngles, smoothTransforms, anchorDrift,
-  coverZoomFor, coverZoom, percentile,
+  anchorExtents, autoFraming, spanForZoom, spanToCover, coversFrame, medianAspect, percentile,
+  MIN_FACE_SPAN,
   frameStarts, totalDurationMs, timelineAt,
   naturalCompare, orderPhotos, parseExifDate,
   pickFace, landmarksToAnchors, candidateRegions, mergeFaces,
-  DEFAULT_FRAMING, DEFAULT_TIMELINE, LANDMARKS,
+  DEFAULT_FRAMING, DEFAULT_TIMELINE, LANDMARKS, FILL_AT,
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = Align;
