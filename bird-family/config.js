@@ -8,18 +8,18 @@
 window.SITE_CONFIG = {
   // The address people will reach the site at once the domain is live.
   // Used for the "Share" section and the copy-link button.
-  siteUrl: 'https://www.supportthebirdfamily.com/',
+  siteUrl: 'https://supportthebirdfamily.org/',
 
   analytics: {
     // Google Analytics 4.  Create a property at https://analytics.google.com,
-    // add a "Web" data stream for www.supportthebirdfamily.com, then paste the
+    // add a "Web" data stream for supportthebirdfamily.org, then paste the
     // Measurement ID here (it looks like "G-XXXXXXXXXX").  Leave blank to
     // disable.  Nothing is loaded from Google until this is filled in.
     ga4MeasurementId: '',
 
     // Optional: Plausible (privacy-friendly, no cookie banner needed).
     // Set to the domain you registered with Plausible, e.g.
-    // 'supportthebirdfamily.com'.  Leave blank to disable.
+    // 'supportthebirdfamily.org'.  Leave blank to disable.
     plausibleDomain: '',
 
     // Respect the browser's "Do Not Track" / Global Privacy Control settings.

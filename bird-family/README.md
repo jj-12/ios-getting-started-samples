@@ -34,7 +34,7 @@ Open `index.html` in any text editor and search for `EDIT`. You'll find:
 ## Turning on analytics
 
 1. Go to <https://analytics.google.com>, create a property, and add a
-   **Web** data stream for `www.supportthebirdfamily.com`.
+   **Web** data stream for `supportthebirdfamily.org`.
 2. Copy the Measurement ID (`G-XXXXXXXXXX`) into `config.js`:
 
    ```js
@@ -61,7 +61,7 @@ tracked (`respectDoNotTrack: true`).
 
 ## QR code for the site
 
-Ready-made codes pointing at `https://www.supportthebirdfamily.com/`:
+Ready-made codes pointing at `https://supportthebirdfamily.org/`:
 
 - `qr/supportthebirdfamily-qr.png` — 2000 px, fine for posters.
 - `qr/supportthebirdfamily-qr.svg` — vector, any size.
@@ -87,14 +87,14 @@ the files a web server needs. Unzip it into the host's web root
 the site is relative, so it works at the root of a domain or in a
 subfolder.
 
-Hosting notes for `www.supportthebirdfamily.com`:
+Hosting notes for `supportthebirdfamily.org`:
 
 - **Any shared host (Bluehost, SiteGround, etc.):** upload the zip
   contents via their file manager or FTP.
 - **Netlify / Cloudflare Pages / Vercel:** drag-and-drop the unzipped
   folder; they give you free HTTPS and you point the domain's DNS at them.
 - **GitHub Pages:** put these files in their own repository, enable Pages,
-  and add a `CNAME` file containing `www.supportthebirdfamily.com`.
+  and add a `CNAME` file containing `supportthebirdfamily.org`.
 
 Make sure the final host serves HTTPS; the copy buttons and the native
 "Share…" button only work on secure pages.
