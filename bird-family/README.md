@@ -1,8 +1,8 @@
 # Support the Bird Family — memorial & donation site
 
 A single-page, plain HTML/CSS/JS website to support the Bird family of
-Riverdale, Utah after the fire: what happened, the official ways to help
-Lindsey and her sons, and a place to remember Nathan and the children. No build step, no framework; it runs from any static web host or
+Riverdale, Utah after the fire: the official ways to help Lindsey and her
+sons, updates, and links to news coverage. No build step, no framework; it runs from any static web host or
 straight off a USB stick.
 
 Live preview while it's in this repo:
@@ -16,7 +16,7 @@ Live preview while it's in this repo:
 | `style.css` | Styling (warm paper background, slate blue, soft gold). |
 | `app.js` | Analytics loader, click tracking, copy / share buttons. |
 | `config.js` | **The only file you need to touch to turn on analytics** or change the site address. |
-| `assets/` | Images: site QR, social preview card, favicon, portrait placeholder. |
+| `assets/` | Images: site QR, social preview card, favicon, floral artwork. |
 | `qr/` | Print-ready QR code (PNG + SVG) and a letter-size printable flyer (`qr/print.html`). |
 | `tools/make-qr.py` | Regenerates the QR codes from the `siteUrl` in `config.js`. |
 | `tools/make-og-image.py` | Regenerates the social preview image. |
@@ -27,14 +27,9 @@ Live preview while it's in this repo:
 Open `index.html` in any text editor and search for `EDIT`. You'll find:
 
 - the hero headline and intro,
-- the "What happened" paragraphs (drafted from the GoFundMe and news coverage; please verify),
-- one card per person under "Remembering" (name, age, photo, tribute),
 - the "Updates" timeline (service details, meal trains, etc.),
+- the list of news articles,
 - the contact email in the footer.
-
-Photos: drop them into `assets/` and change the `src` on the matching
-`<img class="person-photo">`. Square images around 800×800 look best; they
-are displayed as circles.
 
 ## Turning on analytics
 
@@ -56,7 +51,7 @@ see these custom events in GA4 (Reports → Engagement → Events):
 | `afcu_copy` | Someone copied the America First account number. |
 | `article_click` | Someone opened a news article. |
 | `share_copy`, `share_native`, `qr_print` | Share section actions. |
-| `section_view` | Visitor scrolled a section into view (`section` = story, remembering, help, …). |
+| `section_view` | Visitor scrolled a section into view (`section` = help, updates, news, share). |
 
 Prefer something lighter than Google? Set `plausibleDomain` instead (or as
 well) and the same events are sent to [Plausible](https://plausible.io).
