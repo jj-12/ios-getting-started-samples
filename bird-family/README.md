@@ -21,6 +21,7 @@ Live preview while it's in this repo:
 | `tools/make-qr.py` | Regenerates the QR codes from the `siteUrl` in `config.js`. |
 | `tools/make-og-image.py` | Regenerates the social preview image. |
 | `tools/make-zip.sh` | Packages the site for upload to another host. |
+| `tools/bump-version.sh` | Stamps a new version on the CSS/JS links so caches refresh. Run after editing `style.css`, `app.js` or `config.js`. |
 
 ## Editing the content
 
@@ -30,6 +31,13 @@ Open `index.html` in any text editor and search for `EDIT`. You'll find:
 - the "Updates" timeline (service details, meal trains, etc.),
 - the list of news articles,
 - the contact email in the footer.
+
+## After editing style.css, app.js or config.js
+
+Run `./tools/bump-version.sh` once, then upload. It changes the `?v=` stamp
+on the stylesheet and script links in `index.html`, so every browser and
+CDN fetches the new files instead of serving a cached copy. Edits to
+`index.html` itself need no bump.
 
 ## Turning on analytics
 
