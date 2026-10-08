@@ -1,8 +1,8 @@
 # Support the Bird Family — memorial & donation site
 
-A single-page, plain HTML/CSS/JS website to remember Nate Bird and his
-children and to point people to the official ways of helping Lindsey and
-her sons. No build step, no framework; it runs from any static web host or
+A single-page, plain HTML/CSS/JS website to support the Bird family of
+Riverdale, Utah after the fire: what happened, the official ways to help
+Lindsey and her sons, and a place to remember Nathan and the children. No build step, no framework; it runs from any static web host or
 straight off a USB stick.
 
 Live preview while it's in this repo:
@@ -27,7 +27,7 @@ Live preview while it's in this repo:
 Open `index.html` in any text editor and search for `EDIT`. You'll find:
 
 - the hero headline and intro,
-- the "Their story" paragraphs (drafted from news coverage; please verify),
+- the "What happened" paragraphs (drafted from the GoFundMe and news coverage; please verify),
 - one card per person under "Remembering" (name, age, photo, tribute),
 - the "Updates" timeline (service details, meal trains, etc.),
 - the contact email in the footer.

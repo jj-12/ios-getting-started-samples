@@ -37,10 +37,10 @@ def center(text, y, f, fill):
     w = d.textlength(text, font=f)
     d.text(((W - w) / 2, y), text, font=f, fill=fill)
 
-center("IN LOVING MEMORY", 118, font(SANS, 24), GOLD)
-center("Nate Bird and his children", 170, font(SERIF, 70), SLATE)
-center("Riverdale, Utah  ·  October 1, 2026", 268, font(SERIF, 30), SOFT)
-center("Read their story and find ways to help Lindsey and the boys.", 345, font(SANS, 28), SOFT)
+center("RIVERDALE, UTAH", 118, font(SANS, 24), GOLD)
+center("Support the Bird Family", 170, font(SERIF, 70), SLATE)
+center("After the fire of October 1, 2026", 268, font(SERIF, 30), SOFT)
+center("Help Lindsey and her sons rebuild.", 345, font(SANS, 28), SOFT)
 center("www.supportthebirdfamily.com", 460, font(SANS, 32), SLATE)
 
 out = ROOT / "assets" / "og-image.png"

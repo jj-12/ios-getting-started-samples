@@ -54,6 +54,11 @@ h1, h2, h3 {
   color: var(--slate-deep);
 }
 h2 { font-size: clamp(1.9rem, 3.4vw, 2.5rem); }
+.section h2::after {
+  content: ""; display: block; width: 150px; height: 26px; margin: 0.6rem 0 0.4rem;
+  background: url("assets/floral-divider.svg") no-repeat center / contain;
+}
+.share-inner h2::after { margin-left: auto; margin-right: auto; }
 h3 { font-size: 1.45rem; }
 
 p { margin: 0 0 1em; }
@@ -105,7 +110,18 @@ p { margin: 0 0 1em; }
     linear-gradient(180deg, #fdfbf7 0%, var(--paper) 100%);
   border-bottom: 1px solid var(--line);
 }
-.hero-inner { max-width: 760px; }
+.hero-inner { max-width: 760px; position: relative; z-index: 1; }
+.hero::before, .hero::after {
+  content: ""; position: absolute; bottom: -6px; width: clamp(180px, 26vw, 360px); aspect-ratio: 1;
+  background: url("assets/floral-sprig.svg") no-repeat bottom left / contain;
+  opacity: 0.85; pointer-events: none;
+}
+.hero::before { left: 0; }
+.hero::after { right: 0; transform: scaleX(-1); }
+@media (max-width: 700px) {
+  .hero::before, .hero::after { width: 150px; opacity: 0.6; }
+  .hero::after { display: none; }
+}
 .eyebrow {
   font-size: 0.85rem; letter-spacing: 0.22em; text-transform: uppercase;
   color: var(--gold); font-weight: 600; margin-bottom: 1.25rem;
@@ -248,11 +264,16 @@ p { margin: 0 0 1em; }
 
 /* ---------- Footer ---------- */
 .site-footer {
+  position: relative; overflow: hidden;
   border-top: 1px solid var(--line);
   padding: 2.5rem 0 3rem; text-align: center; color: var(--ink-soft);
   font-family: var(--serif); font-size: 1.1rem;
 }
 .site-footer .fine-print { font-family: var(--sans); max-width: 640px; margin: 0.5rem auto 0; }
+.site-footer::before {
+  content: ""; display: block; width: 150px; height: 26px; margin: 0 auto 1.25rem;
+  background: url("assets/floral-divider.svg") no-repeat center / contain;
+}
 
 /* ---------- Print ---------- */
 @media print {

@@ -20,10 +20,18 @@
     }
     .toolbar button.primary { background: var(--slate); color: #fff; }
     .sheet {
+      position: relative; overflow: hidden;
       width: 8.5in; max-width: 100%; aspect-ratio: 8.5 / 11; background: #fff; padding: 0.9in 0.75in;
       display: flex; flex-direction: column; align-items: center; text-align: center;
       box-shadow: 0 10px 40px -16px rgba(0,0,0,0.3);
     }
+    .sheet::before, .sheet::after {
+      content: ""; position: absolute; bottom: -0.1in; width: 2.6in; aspect-ratio: 1;
+      background: url("../assets/floral-sprig.svg") no-repeat bottom left / contain; opacity: 0.85; pointer-events: none;
+    }
+    .sheet::before { left: 0; }
+    .sheet::after { right: 0; transform: scaleX(-1); }
+    .sheet > * { position: relative; z-index: 1; }
     .eyebrow { font-size: 0.8rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--gold); font-weight: 600; margin: 0 0 0.5rem; }
     h1 { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 500; font-size: 2.6rem; color: var(--slate); margin: 0 0 0.25rem; line-height: 1.1; }
     h1 em { font-style: italic; }
@@ -31,7 +39,7 @@
     .qr { width: 4.2in; height: 4.2in; }
     .url { font-family: "Cormorant Garamond", Georgia, serif; font-size: 1.7rem; color: var(--slate); margin: 1rem 0 0.25rem; }
     .hint { color: var(--ink-soft); font-size: 0.95rem; margin: 0; }
-    .ways { margin-top: auto; font-size: 0.9rem; color: var(--ink-soft); line-height: 1.5; }
+    .ways { margin-top: auto; font-size: 0.9rem; color: var(--ink-soft); line-height: 1.5; max-width: 4.6in; }
     .ways strong { color: var(--slate); }
     @page { size: letter; margin: 0; }
     @media print {
@@ -50,9 +58,9 @@
   </div>
 
   <div class="sheet">
-    <p class="eyebrow">In loving memory</p>
-    <h1>Nate Bird <em>and his children</em></h1>
-    <p class="sub">Scan to read their story and find ways to help Lindsey and the boys rebuild.</p>
+    <p class="eyebrow">Riverdale, Utah</p>
+    <h1>Support the <em>Bird Family</em></h1>
+    <p class="sub">After the fire that took their home, Nathan, and four of their children, Lindsey and her sons are starting over. Scan to learn what happened and how to help.</p>
     <img class="qr" src="supportthebirdfamily-qr.svg" alt="QR code linking to supportthebirdfamily.com">
     <p class="url">www.supportthebirdfamily.com</p>
     <p class="hint">Open your phone's camera and point it at the code.</p>
