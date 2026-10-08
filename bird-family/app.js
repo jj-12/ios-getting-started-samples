@@ -154,7 +154,7 @@
       shareBtn.addEventListener('click', function () {
         navigator.share({
           title: document.title,
-          text: 'Remembering Nate Bird and his children. Please consider helping the family.',
+          text: 'The Bird family of Riverdale lost their home, Nathan, and four of their children in a fire. Please help Lindsey and her sons rebuild.',
           url: siteUrl
         }).catch(function () { /* user cancelled */ });
       });
