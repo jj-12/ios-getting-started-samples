@@ -73,8 +73,12 @@ Ready-made codes pointing at `https://supportthebirdfamily.org/`:
 
 - `qr/supportthebirdfamily-qr.png` — 2000 px, fine for posters.
 - `qr/supportthebirdfamily-qr.svg` — vector, any size.
-- `qr/print.html` — open it in a browser and press Print for a letter-size
-  flyer with the code, the URL and the ways to give.
+- `qr/supportthebirdfamily-flyer.pdf` — letter-size flyer with the family
+  photo, the story, the QR code and the official ways to give. Print as is.
+- `qr/supportthebirdfamily-flyer.png` — the same flyer as an image, for
+  posting online or texting.
+- `qr/print.html` — the flyer's source. Open it in a browser and press Print,
+  or re-render the PDF/PNG after editing it.
 
 If the address ever changes, update `siteUrl` in `config.js` and run:
 

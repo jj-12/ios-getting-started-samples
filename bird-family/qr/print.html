@@ -3,70 +3,115 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Support the Bird Family · Printable QR code</title>
+  <title>Support the Bird Family · Printable flyer</title>
   <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    :root { --slate: #27312f; --gold: #b9933f; --ink-soft: #5c5955; }
+    :root {
+      --paper: #f8f4ec; --ink: #27312f; --ink-soft: #3f4845; --ink-muted: #5c655f; --ink-faint: #6f6a60;
+      --line: #e2dacc; --wine: #7a4349; --gold: #b08a4a;
+    }
     * { box-sizing: border-box; }
     body {
-      margin: 0; font-family: "Source Sans 3", "Segoe UI", Arial, sans-serif; color: #2b2a28;
-      background: #f1ece3; display: flex; flex-direction: column; align-items: center; padding: 1.5rem 1rem;
+      margin: 0; font-family: "Source Sans 3", "Segoe UI", Arial, sans-serif; color: var(--ink);
+      background: #ece6da; display: flex; flex-direction: column; align-items: center; padding: 1.5rem 1rem;
     }
     .toolbar { margin-bottom: 1.25rem; display: flex; gap: 0.6rem; flex-wrap: wrap; justify-content: center; }
     .toolbar a, .toolbar button {
       font: 600 0.95rem "Source Sans 3", Arial, sans-serif; padding: 0.6rem 1.2rem; border-radius: 999px;
-      border: 1.5px solid var(--slate); background: #fff; color: var(--slate); text-decoration: none; cursor: pointer;
+      border: 1.5px solid var(--ink); background: #fff; color: var(--ink); text-decoration: none; cursor: pointer;
     }
-    .toolbar button.primary { background: var(--slate); color: #fff; }
+    .toolbar button.primary { background: var(--wine); border-color: var(--wine); color: #fff; }
+
     .sheet {
       position: relative; overflow: hidden;
-      width: 8.5in; max-width: 100%; aspect-ratio: 8.5 / 11; background: #fff; padding: 0.9in 0.75in;
+      width: 8.5in; height: 11in; background: var(--paper); padding: 0.5in 0.6in 0.42in;
       display: flex; flex-direction: column; align-items: center; text-align: center;
       box-shadow: 0 10px 40px -16px rgba(0,0,0,0.3);
     }
     .sheet::before, .sheet::after {
-      content: ""; position: absolute; bottom: -0.1in; width: 2.6in; aspect-ratio: 1;
-      background: url("../assets/floral-sprig.svg") no-repeat bottom left / contain; opacity: 0.85; pointer-events: none;
+      content: ""; position: absolute; bottom: -0.05in; width: 1.55in; aspect-ratio: 1;
+      background: url("../assets/floral-sprig.svg") no-repeat bottom left / contain; opacity: 0.9; pointer-events: none;
     }
     .sheet::before { left: 0; }
     .sheet::after { right: 0; transform: scaleX(-1); }
     .sheet > * { position: relative; z-index: 1; }
-    .eyebrow { font-size: 0.8rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--gold); font-weight: 600; margin: 0 0 0.5rem; }
-    h1 { font-family: Fraunces, Georgia, serif; font-weight: 500; font-size: 2.6rem; color: var(--slate); margin: 0 0 0.25rem; line-height: 1.1; }
-    h1 em { font-style: italic; }
-    .sub { color: var(--ink-soft); font-size: 1.05rem; margin: 0 0 1.5rem; max-width: 5.5in; }
-    .qr { width: 4.2in; height: 4.2in; }
-    .url { font-family: Fraunces, Georgia, serif; font-size: 1.7rem; color: var(--slate); margin: 1rem 0 0.25rem; }
-    .hint { color: var(--ink-soft); font-size: 0.95rem; margin: 0; }
-    .ways { margin-top: auto; font-size: 0.9rem; color: var(--ink-soft); line-height: 1.5; max-width: 4.6in; }
-    .ways strong { color: var(--slate); }
+
+    .eyebrow { font-size: 0.78rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--gold); font-weight: 600; margin: 0 0 0.3rem; }
+    h1 { font-family: Fraunces, Georgia, serif; font-weight: 400; font-size: 2.7rem; color: var(--ink); margin: 0; line-height: 1.05; letter-spacing: -0.01em; }
+    .sub { font-family: Fraunces, Georgia, serif; font-style: italic; font-size: 1.15rem; color: var(--ink-muted); margin: 0.35rem 0 0; }
+
+    .photo {
+      width: 100%; margin: 0.28in 0 0; border-radius: 14px; background: #fff; padding: 5px; border: 1px solid var(--line);
+      box-shadow: 0 16px 36px -24px rgba(39,49,47,0.4);
+    }
+    .photo img { display: block; width: 100%; height: auto; border-radius: 10px; }
+
+    .story { margin: 0.22in 0 0; max-width: 6.4in; font-size: 1rem; line-height: 1.45; color: var(--ink-soft); }
+
+    .scan {
+      margin: 0.22in 0 0; display: grid; grid-template-columns: auto 1fr; gap: 0.3in; align-items: center;
+      width: 100%; max-width: 6.4in; text-align: left;
+    }
+    .qr { width: 2.05in; height: 2.05in; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 8px; }
+    .scan-text { display: flex; flex-direction: column; gap: 0.5rem; }
+    .scan-text .lead { font-family: Fraunces, Georgia, serif; font-size: 1.5rem; line-height: 1.2; color: var(--ink); margin: 0; }
+    .url { font-family: Fraunces, Georgia, serif; font-size: 1.55rem; color: var(--wine); margin: 0; letter-spacing: 0.01em; }
+    .hint { color: var(--ink-faint); font-size: 0.92rem; margin: 0; }
+
+    .ways {
+      margin: auto 0 0; padding-top: 0.25in; width: 100%; max-width: 5.2in;
+      font-size: 0.88rem; line-height: 1.5; color: var(--ink-faint); border-top: 1px solid var(--line);
+    }
+    .ways strong { color: var(--ink); }
+
     @page { size: letter; margin: 0; }
     @media print {
       body { background: #fff; padding: 0; }
       .toolbar { display: none; }
-      .sheet { box-shadow: none; width: 8.5in; height: 11in; }
+      .sheet { box-shadow: none; }
     }
   </style>
 </head>
 <body>
   <div class="toolbar">
     <button class="primary" onclick="window.print()">Print</button>
-    <a href="supportthebirdfamily-qr.png" download>Download PNG (2000 px)</a>
-    <a href="supportthebirdfamily-qr.svg" download>Download SVG</a>
+    <a href="supportthebirdfamily-flyer.pdf" download>Download PDF</a>
+    <a href="supportthebirdfamily-qr.png" download>QR code only (PNG)</a>
     <a href="../index.html">Back to site</a>
   </div>
 
   <div class="sheet">
     <p class="eyebrow">Riverdale, Utah</p>
-    <h1>Support the <em>Bird Family</em></h1>
-    <p class="sub">After the fire that took their home, Nathan, and four of their children, Lindsey and her sons are starting over. Scan to learn what happened and how to help.</p>
-    <img class="qr" src="supportthebirdfamily-qr.svg" alt="QR code linking to supportthebirdfamily.org">
-    <p class="url">supportthebirdfamily.org</p>
-    <p class="hint">Open your phone's camera and point it at the code.</p>
+    <h1>Support the Bird Family</h1>
+    <p class="sub">After the fire of October 1, 2026</p>
+
+    <div class="photo">
+      <img src="../assets/family.jpg" alt="The Bird family standing together outdoors in late summer">
+    </div>
+
+    <p class="story">
+      In a single night, the Bird family lost their home, their husband and father
+      Nathan, and four of their children. Lindsey and two of their sons survived.
+      They now face funeral and memorial costs, medical bills, and the long work of
+      starting over. Every gift, of any size, helps.
+    </p>
+
+    <div class="scan">
+      <img class="qr" src="supportthebirdfamily-qr.svg" alt="QR code linking to supportthebirdfamily.org">
+      <div class="scan-text">
+        <p class="lead">Scan with your phone's camera to give, or visit</p>
+        <p class="url">supportthebirdfamily.org</p>
+        <p class="hint">The site lists every official way to help and will carry updates from the family.</p>
+      </div>
+    </div>
+
     <p class="ways">
-      Or give directly: <strong>GoFundMe</strong> (search "Support for the Bird family after the fire") &middot;
-      <strong>America First Credit Union</strong> "Bird Family Memorial Account" #746009136425
+      <strong>Official ways to give:</strong> the family's GoFundMe (search "Support for the Bird Family After the Fire")
+      &middot; America First Credit Union, "Bird Family Memorial Account" #746009136425.
+      Please give only through these channels.
     </p>
   </div>
 </body>
