@@ -41,7 +41,7 @@ center("RIVERDALE, UTAH", 118, font(SANS, 24), GOLD)
 center("Support the Bird Family", 170, font(SERIF, 70), SLATE)
 center("After the fire of October 1, 2026", 268, font(SERIF, 30), SOFT)
 center("Help Lindsey and her sons rebuild.", 345, font(SANS, 28), SOFT)
-center("www.supportthebirdfamily.com", 460, font(SANS, 32), SLATE)
+center("supportthebirdfamily.org", 460, font(SANS, 32), SLATE)
 
 out = ROOT / "assets" / "og-image.png"
 img.save(out, optimize=True)

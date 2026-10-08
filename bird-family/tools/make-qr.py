@@ -25,7 +25,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 def site_url_from_config():
     text = (ROOT / "config.js").read_text(encoding="utf-8")
     m = re.search(r"siteUrl:\s*['\"]([^'\"]+)['\"]", text)
-    return m.group(1) if m else "https://www.supportthebirdfamily.com/"
+    return m.group(1) if m else "https://supportthebirdfamily.org/"
 
 
 def build(url):
