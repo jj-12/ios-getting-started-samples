@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Support the Bird Family · Riverdale, Utah</title>
-  <meta name="description" content="On October 1, 2026, the Bird family of Riverdale, Utah lost their home, Nathan, and four of their children in a house fire. Learn what happened and help Lindsey and her sons rebuild.">
-  <meta name="theme-color" content="#2f4858">
+  <meta name="description" content="On October 1, 2026, the Bird family of Riverdale, Utah lost their home, Nathan, and four of their children in a house fire. Help Lindsey and her sons rebuild.">
+  <meta name="theme-color" content="#27312f">
 
   <!-- Social sharing preview (Facebook, iMessage, etc.) -->
   <meta property="og:type" content="website">
@@ -18,7 +18,7 @@
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 
   <script src="config.js"></script>
@@ -31,11 +31,11 @@
   <header class="site-header">
     <div class="container header-inner">
       <a class="brand" href="#top">
-        <img src="assets/favicon.svg" alt="" width="28" height="28">
+        <img src="assets/favicon.svg" alt="" width="26" height="26">
         <span>Support the Bird Family</span>
       </a>
       <nav class="site-nav" aria-label="Sections">
-        <a href="#help" class="nav-cta">Ways to help</a>
+        <a href="#help">Ways to help</a>
         <a href="#updates">Updates</a>
         <a href="#news">News coverage</a>
       </nav>
@@ -48,17 +48,26 @@
          HERO
          ================================================================ -->
     <section class="hero">
-      <div class="container hero-inner">
-        <p class="eyebrow">Riverdale, Utah</p>
-        <h1>Support the<br>Bird Family</h1>
-        <p class="hero-dates">After the fire of October 1, 2026</p>
-        <p class="hero-lede">
-          In a single night, the Bird family lost their home, their husband and
-          father Nathan, and four of their children. Lindsey and two of their
-          sons survived, one with serious injuries. They now face funeral and
-          memorial costs, medical bills, and the long work of starting over.
-          This page is where friends, neighbors and strangers can help.
-        </p>
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">Riverdale, Utah</p>
+          <h1>Support the Bird&nbsp;Family</h1>
+          <p class="hero-dates">After the fire of October 1, 2026</p>
+          <!-- EDIT: Hero introduction. -->
+          <p class="hero-lede">
+            In a single night, the Bird family lost their home, their husband and
+            father Nathan, and four of their children. Lindsey and two of their
+            sons survived, one with serious injuries. They now face funeral and
+            memorial costs, medical bills, and the long work of starting over.
+          </p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="https://www.gofundme.com/f/support-for-the-bird-family-after-the-fire" target="_blank" rel="noopener" data-track="gofundme_click" data-location="hero">Give on GoFundMe</a>
+            <a class="btn btn-ghost" href="#help">Other ways to give</a>
+          </div>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+          <img src="assets/floral-bouquet.svg" alt="" width="560" height="620">
+        </div>
       </div>
     </section>
 
@@ -69,123 +78,126 @@
       <div class="container">
         <h2>Ways to help</h2>
         <p class="section-intro">
-          Donations will help with funeral and memorial expenses for Nathan and
-          the four children, medical care for the boys, and the urgent costs of
-          starting over without a home. Lindsey and her sons are relying on this
-          support. Every gift, of any size, helps. The family has asked that
-          donations go only through the channels listed here so they can be sure
-          the money reaches them.
+          Every gift, of any size, goes to Lindsey and her sons. The family has
+          asked that donations come only through the two channels below so they
+          can be sure the money reaches them.
         </p>
 
         <div class="help-grid">
 
           <!-- GoFundMe -->
           <article class="help-card">
-            <div class="help-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.6-7-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 7 3.5C19 16.4 12 21 12 21z"/></svg>
-            </div>
+            <p class="label">Online</p>
             <h3>GoFundMe</h3>
             <p>
-              The quickest way to give online by card, Apple Pay or Google Pay.
-              You can leave a note for the family with your donation.
+              Organized by Cassie McCormac, a friend of the family. Give by card,
+              Apple Pay or Google Pay, and leave a note for Lindsey and the boys
+              if you like.
             </p>
-            <a class="btn btn-primary" href="https://www.gofundme.com/f/support-for-the-bird-family-after-the-fire" target="_blank" rel="noopener" data-track="gofundme_click" data-location="help">Donate on GoFundMe</a>
+            <p class="label">Your gift helps cover</p>
+            <ul class="covers">
+              <li>Funeral and memorial expenses for Nathan and the four children</li>
+              <li>Medical care for the boys</li>
+              <li>Housing and the essentials of starting over</li>
+            </ul>
+            <div class="card-action">
+              <a class="btn btn-primary" href="https://www.gofundme.com/f/support-for-the-bird-family-after-the-fire" target="_blank" rel="noopener" data-track="gofundme_click" data-location="help">Donate on GoFundMe</a>
+            </div>
           </article>
 
           <!-- America First Credit Union -->
           <article class="help-card">
-            <div class="help-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-6 9 6"/><path d="M5 10v9M9 10v9M15 10v9M19 10v9"/><path d="M3 19h18"/></svg>
-            </div>
+            <p class="label">In person or by transfer</p>
             <h3>America First Credit Union</h3>
             <p>
-              A memorial account has been set up at America First. You can donate
-              at any branch, or transfer from your own America First account.
+              A memorial account has been set up at America First. Donate at any
+              branch, or transfer from your own America First account.
             </p>
             <dl class="account">
               <div>
-                <dt>Account name</dt>
+                <dt class="label">Account name</dt>
                 <dd>Bird Family Memorial Account</dd>
               </div>
               <div>
-                <dt>Account number</dt>
+                <dt class="label">Account number</dt>
                 <dd class="account-number">
                   <span id="afcu-number">746009136425</span>
                   <button class="copy-btn" type="button" data-copy="746009136425" data-track="afcu_copy" aria-label="Copy account number">Copy</button>
                 </dd>
               </div>
               <div>
-                <dt>Transferring from an America First account?</dt>
+                <dt class="label">From an America First account</dt>
                 <dd>Choose <strong>Savings</strong> and enter member number <strong>9136425</strong>.</dd>
               </div>
             </dl>
-            <p class="fine-print">
+            <p class="fine-print card-foot">
               Details as published by
               <a href="https://www.ksl.com/article/51633220/firefighters-say-overheated-power-strip-caused-deadly-riverdale-fire" target="_blank" rel="noopener" data-track="article_click" data-location="afcu">KSL</a>.
-              Please double-check with a teller before sending a large transfer.
+              Please confirm with a teller before sending a large transfer.
             </p>
           </article>
 
         </div>
 
         <p class="fraud-note">
-          Several unofficial fundraisers have appeared online. The family asks that
-          you give only through GoFundMe or the America First memorial account
-          above.
+          <strong>A note on other fundraisers.</strong> Several unofficial pages
+          have appeared online. Please give only through GoFundMe or the memorial
+          account above.
         </p>
       </div>
     </section>
 
     <!-- ================================================================
-         UPDATES / SERVICES / NEWS
+         UPDATES + NEWS
          ================================================================ -->
-    <section id="updates" class="section section-alt">
-      <div class="container narrow">
-        <h2>Updates</h2>
+    <section class="section section-alt">
+      <div class="container band">
 
-        <!-- EDIT: Add funeral / memorial service details, meal trains, or anything
-             else the family wants shared. Newest items first. -->
-        <ul class="timeline">
-          <li>
-            <time datetime="2026-10-08">October 8, 2026</time>
-            <p>This page was created by friends of the family. Service details will be posted here as soon as they are confirmed.</p>
-          </li>
-          <li>
-            <time datetime="2026-10-07">October 7, 2026</time>
-            <p>Riverdale Fire Department announced that the fire was caused by an overheated power strip and was not intentionally set.</p>
-          </li>
-          <li>
-            <time datetime="2026-10-01">October 1, 2026</time>
-            <p>A fire at the Bird family's home in Riverdale claimed the lives of Nathan and three of the children. A fourth child passed away in the days that followed.</p>
-          </li>
-        </ul>
+        <div id="updates" class="band-col">
+          <h2>Updates</h2>
+          <!-- EDIT: Add funeral / memorial service details, meal trains, or anything
+               else the family wants shared. Newest items first. -->
+          <ul class="timeline">
+            <li>
+              <time datetime="2026-10-08">October 8, 2026</time>
+              <p>This page was created by friends of the family. Service details will be posted here as soon as they are confirmed.</p>
+            </li>
+            <li>
+              <time datetime="2026-10-07">October 7, 2026</time>
+              <p>Riverdale Fire Department announced that the fire was caused by an overheated power strip and was not intentionally set.</p>
+            </li>
+            <li>
+              <time datetime="2026-10-01">October 1, 2026</time>
+              <p>A fire at the Bird family's home in Riverdale claimed the lives of Nathan and three of the children. A fourth child passed away in the days that followed.</p>
+            </li>
+          </ul>
+        </div>
 
-      </div>
-    </section>
+        <div id="news" class="band-col">
+          <h2>News coverage</h2>
+          <!-- EDIT: Add more articles here as they are published. Copy one <a class="news-card"> block per article. -->
+          <div class="news-cards">
+            <a class="news-card" href="https://www.ksl.com/article/51633220/firefighters-say-overheated-power-strip-caused-deadly-riverdale-fire" target="_blank" rel="noopener" data-track="article_click">
+              <span class="label">KSL &middot; October 7, 2026</span>
+              <span class="news-title">Firefighters say overheated power strip caused deadly Riverdale fire</span>
+              <span class="news-more">Read the article</span>
+            </a>
+          </div>
+        </div>
 
-    <!-- ================================================================
-         NEWS COVERAGE
-         ================================================================ -->
-    <section id="news" class="section">
-      <div class="container narrow">
-        <h2>External links to news coverage</h2>
-        <!-- EDIT: Add more articles here as they are published. -->
-        <ul class="news-list">
-          <li><a href="https://www.ksl.com/article/51633220/firefighters-say-overheated-power-strip-caused-deadly-riverdale-fire" target="_blank" rel="noopener" data-track="article_click">KSL: Firefighters say overheated power strip caused deadly Riverdale fire</a></li>
-        </ul>
       </div>
     </section>
 
     <!-- ================================================================
          SHARE
          ================================================================ -->
-    <section id="share" class="section section-alt">
+    <section id="share" class="section">
       <div class="container narrow share-inner">
         <h2>Share this page</h2>
         <p>
           The more people who know, the more help reaches the family. Print the
-          code for a flyer, a church bulletin or a jar at a fundraiser, or just
-          send the link to someone who would want to help.
+          code for a flyer or a church bulletin, or send the link to someone who
+          would want to help.
         </p>
         <div class="share-row">
           <img class="site-qr" src="assets/site-qr.png" alt="QR code linking to supportthebirdfamily.org" width="200" height="200" loading="lazy">
@@ -209,7 +221,7 @@
       <!-- EDIT: Put a contact email here if you want people to be able to reach you. -->
       <p class="fine-print">
         Questions or corrections? Email <a href="mailto:hello@supportthebirdfamily.org">hello@supportthebirdfamily.org</a>.
-        This site uses basic, anonymous visit statistics to understand how people find it; no personal information is collected.
+        This site keeps basic, anonymous visit counts only; no personal information is collected.
       </p>
     </div>
   </footer>

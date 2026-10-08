@@ -113,3 +113,32 @@ div.append(blossom(80, 14, 6.5))
 div.append('</svg>')
 (ROOT / "floral-divider.svg").write_text("\n".join(div))
 print("wrote", ROOT / "floral-sprig.svg", "and", ROOT / "floral-divider.svg")
+
+
+# ---------- Bouquet: a fuller arrangement for the hero ----------
+random.seed(11)
+bq = ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 620" width="560" height="620">']
+# tall centre stem
+bq.append(stem((290, 600), (280, 470), (300, 300), (270, 90),
+               leaves=[0.2, 0.3, 0.42, 0.52, 0.64, 0.74, 0.84], blooms=[(0.995, 22)], buds=[0.92], berry_at=[0.58]))
+# left arcs
+bq.append(stem((282, 600), (220, 480), (120, 360), (70, 220),
+               leaves=[0.25, 0.4, 0.55, 0.7, 0.85], width=1.5, blooms=[(0.99, 17)], buds=[0.9]))
+bq.append(stem((286, 600), (250, 520), (190, 470), (130, 440),
+               leaves=[0.3, 0.5, 0.7, 0.88], width=1.2, leaf_len=(18, 28), leaf_w=(7, 10), berry_at=[0.98]))
+# right arcs
+bq.append(stem((298, 600), (360, 470), (430, 360), (490, 200),
+               leaves=[0.22, 0.38, 0.52, 0.66, 0.8], width=1.5, blooms=[(0.99, 18)], buds=[0.9]))
+bq.append(stem((294, 600), (340, 530), (420, 490), (470, 470),
+               leaves=[0.3, 0.5, 0.7, 0.88], width=1.2, leaf_len=(18, 28), leaf_w=(7, 10), blooms=[(0.99, 12)]))
+# small inner sprigs
+bq.append(stem((288, 598), (300, 500), (330, 420), (350, 330),
+               leaves=[0.35, 0.55, 0.75], width=1.1, leaf_len=(16, 24), leaf_w=(6, 9), buds=[0.97]))
+bq.append(stem((290, 598), (270, 500), (235, 420), (215, 330),
+               leaves=[0.35, 0.55, 0.75], width=1.1, leaf_len=(16, 24), leaf_w=(6, 9), blooms=[(0.98, 10)]))
+# a loose ribbon tie at the base
+bq.append(f'<path d="M262,585 C280,575 300,575 318,585 C300,595 280,595 262,585 Z" fill="{CREAM}" stroke="{GOLD}" stroke-width="1.2"/>')
+bq.append(f'<path d="M262,585 C250,600 246,612 252,618 M318,585 C330,600 334,612 328,618" fill="none" stroke="{GOLD}" stroke-width="1.2" stroke-linecap="round"/>')
+bq.append('</svg>')
+(ROOT / "floral-bouquet.svg").write_text("\n".join(bq))
+print("wrote", ROOT / "floral-bouquet.svg")
