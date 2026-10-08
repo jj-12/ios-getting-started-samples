@@ -16,6 +16,11 @@ Small installable web apps hosted on GitHub Pages:
   timelapse with the same face pinned in place on every frame. Live at
   <https://jj-12.github.io/ios-getting-started-samples/timelapse/>
   ([details](timelapse/README.md))
+- **[Support the Bird Family](bird-family/)** — memorial and donation site
+  for the Bird family of Riverdale, Utah. Plain HTML/JS, ready to move to
+  its own domain. Live at
+  <https://jj-12.github.io/ios-getting-started-samples/bird-family/>
+  ([details](bird-family/README.md))
 
 ---
 

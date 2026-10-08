@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Support the Bird Family · Printable QR code</title>
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root { --slate: #22363f; --gold: #b9933f; --ink-soft: #5c5955; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Source Sans 3", "Segoe UI", Arial, sans-serif; color: #2b2a28;
+      background: #f1ece3; display: flex; flex-direction: column; align-items: center; padding: 1.5rem 1rem;
+    }
+    .toolbar { margin-bottom: 1.25rem; display: flex; gap: 0.6rem; flex-wrap: wrap; justify-content: center; }
+    .toolbar a, .toolbar button {
+      font: 600 0.95rem "Source Sans 3", Arial, sans-serif; padding: 0.6rem 1.2rem; border-radius: 999px;
+      border: 1.5px solid var(--slate); background: #fff; color: var(--slate); text-decoration: none; cursor: pointer;
+    }
+    .toolbar button.primary { background: var(--slate); color: #fff; }
+    .sheet {
+      width: 8.5in; max-width: 100%; aspect-ratio: 8.5 / 11; background: #fff; padding: 0.9in 0.75in;
+      display: flex; flex-direction: column; align-items: center; text-align: center;
+      box-shadow: 0 10px 40px -16px rgba(0,0,0,0.3);
+    }
+    .eyebrow { font-size: 0.8rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--gold); font-weight: 600; margin: 0 0 0.5rem; }
+    h1 { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 500; font-size: 2.6rem; color: var(--slate); margin: 0 0 0.25rem; line-height: 1.1; }
+    h1 em { font-style: italic; }
+    .sub { color: var(--ink-soft); font-size: 1.05rem; margin: 0 0 1.5rem; max-width: 5.5in; }
+    .qr { width: 4.2in; height: 4.2in; }
+    .url { font-family: "Cormorant Garamond", Georgia, serif; font-size: 1.7rem; color: var(--slate); margin: 1rem 0 0.25rem; }
+    .hint { color: var(--ink-soft); font-size: 0.95rem; margin: 0; }
+    .ways { margin-top: auto; font-size: 0.9rem; color: var(--ink-soft); line-height: 1.5; }
+    .ways strong { color: var(--slate); }
+    @page { size: letter; margin: 0; }
+    @media print {
+      body { background: #fff; padding: 0; }
+      .toolbar { display: none; }
+      .sheet { box-shadow: none; width: 8.5in; height: 11in; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button class="primary" onclick="window.print()">Print</button>
+    <a href="supportthebirdfamily-qr.png" download>Download PNG (2000 px)</a>
+    <a href="supportthebirdfamily-qr.svg" download>Download SVG</a>
+    <a href="../index.html">Back to site</a>
+  </div>
+
+  <div class="sheet">
+    <p class="eyebrow">In loving memory</p>
+    <h1>Nate Bird <em>and his children</em></h1>
+    <p class="sub">Scan to read their story and find ways to help Lindsey and the boys rebuild.</p>
+    <img class="qr" src="supportthebirdfamily-qr.svg" alt="QR code linking to supportthebirdfamily.com">
+    <p class="url">www.supportthebirdfamily.com</p>
+    <p class="hint">Open your phone's camera and point it at the code.</p>
+    <p class="ways">
+      Or give directly: <strong>GoFundMe</strong> (search "Support for the Bird family after the fire") &middot;
+      <strong>America First Credit Union</strong> "Bird Family Memorial Account" #746009136425
+    </p>
+  </div>
+</body>
+</html>
