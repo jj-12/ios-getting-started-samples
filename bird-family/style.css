@@ -14,8 +14,11 @@
   --ink-faint: #6f6a60;
   --line: #e2dacc;
   --line-strong: #d9d1c2;
-  --sage: #4f6248;
-  --gold: #b9933f;
+  --sage: #5c6b48;      /* olive, from the shirts and the hillside */
+  --wine: #7a4349;      /* muted burgundy, from the family's shirts */
+  --wine-deep: #5f3338;
+  --denim: #5f7390;     /* a touch of denim, used sparingly */
+  --gold: #b08a4a;      /* warm tan, from the late-summer grass */
   --white: #ffffff;
 
   --serif: "Fraunces", "Georgia", "Times New Roman", serif;
@@ -136,12 +139,26 @@ p { margin: 0 0 1em; }
 }
 .hero-lede { font-size: 1.125rem; color: var(--ink-soft); margin-bottom: 1.75rem; }
 .hero-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
-.hero-art { display: flex; justify-content: center; }
-.hero-art img { width: 100%; max-width: 440px; height: auto; }
+.hero-photo { position: relative; margin: 0 0 0 2.5rem; }
+.hero-photo > img:first-child {
+  width: 100%; height: auto; border-radius: 18px;
+  border: 1px solid var(--line); background: var(--white); padding: 6px;
+  box-shadow: 0 18px 40px -24px rgba(39, 49, 47, 0.45);
+}
+.hero-bouquet {
+  position: absolute; left: -4.5rem; bottom: -1.5rem;
+  width: 190px; height: auto; pointer-events: none;
+  filter: drop-shadow(0 6px 10px rgba(39, 49, 47, 0.12));
+}
+.hero-photo figcaption {
+  margin: 0.9rem 0 0 0; text-align: right;
+  font-family: var(--serif); font-style: italic; font-size: 1.05rem; color: var(--ink-muted);
+}
 @media (max-width: 860px) {
   .hero-grid { grid-template-columns: 1fr; gap: 1.5rem; }
-  .hero-art { order: -1; }
-  .hero-art img { max-width: 260px; }
+  .hero-photo { order: -1; margin: 0 0 0.5rem; }
+  .hero-bouquet { width: 120px; left: -0.75rem; bottom: 1.25rem; }
+  .hero-photo figcaption { text-align: center; }
   .hero-copy { max-width: none; }
 }
 
@@ -153,8 +170,8 @@ p { margin: 0 0 1em; }
   text-decoration: none; cursor: pointer; border: 1.5px solid transparent;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-.btn-primary { background: var(--ink); color: var(--paper); }
-.btn-primary:hover { background: #121a18; color: var(--paper); }
+.btn-primary { background: var(--wine); color: var(--paper); }
+.btn-primary:hover { background: var(--wine-deep); color: var(--paper); }
 .btn-secondary { background: transparent; color: var(--ink); border-color: var(--ink); }
 .btn-secondary:hover { background: var(--ink); color: var(--paper); }
 .btn-ghost { background: transparent; color: var(--ink-muted); border-color: var(--line-strong); }
@@ -205,14 +222,14 @@ p { margin: 0 0 1em; }
   background: var(--paper-alt); color: var(--ink); border: 1px solid var(--line-strong);
 }
 .copy-btn:hover { background: #eadfd8; }
-.copy-btn.copied { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.copy-btn.copied { background: var(--wine); color: var(--paper); border-color: var(--wine); }
 
 .fine-print { font-size: 0.88rem; color: var(--ink-faint); }
 .fraud-note {
   margin: 2rem auto 0; max-width: 640px; text-align: center;
   font-size: 0.95rem; color: var(--ink-faint);
 }
-.fraud-note strong { color: var(--sage); }
+.fraud-note strong { color: var(--wine); }
 
 /* ---------- Updates + News band ---------- */
 .band {
@@ -242,7 +259,7 @@ p { margin: 0 0 1em; }
 }
 .news-card:hover { border-color: var(--ink-muted); }
 .news-title { font-family: var(--serif); font-size: 1.25rem; line-height: 1.3; color: var(--ink); }
-.news-more { font-size: 0.9rem; font-weight: 600; color: var(--sage); }
+.news-more { font-size: 0.9rem; font-weight: 600; color: var(--denim); }
 
 /* ---------- Share ---------- */
 .share-inner { text-align: center; }
