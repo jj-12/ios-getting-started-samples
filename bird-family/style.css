@@ -203,10 +203,6 @@ p { margin: 0 0 1em; }
   gap: 1.5rem;
   align-items: stretch;
 }
-/* Two columns: let the third card take the full row instead of sitting alone */
-@media (max-width: 950px) {
-  .help-card:nth-child(3) { grid-column: 1 / -1; }
-}
 .help-card {
   background: var(--white);
   border: 1px solid var(--line);
@@ -221,13 +217,6 @@ p { margin: 0 0 1em; }
 .covers { margin: 0; padding-left: 1.25rem; color: var(--ink-soft); line-height: 1.7; }
 .card-action { margin-top: auto; padding-top: 0.5rem; }
 .card-foot { margin-top: auto !important; padding-top: 0.5rem; }
-.qr-placeholder {
-  display: grid; place-items: center; text-align: center;
-  width: 150px; height: 150px; margin: 0.25rem auto 0;
-  border: 1.5px dashed var(--line-strong); border-radius: 12px;
-  background: var(--paper); color: var(--ink-faint);
-  font-size: 0.85rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; line-height: 1.4;
-}
 
 .account { margin: 0.25rem 0 0; display: grid; gap: 0.9rem; }
 .account dd { margin: 0.15rem 0 0; font-size: 1.05rem; color: var(--ink); }
